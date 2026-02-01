@@ -7,9 +7,11 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "preview:cloudflare": "npm run build && npx wrangler pages dev dist",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^11.0.0",
     "@astrojs/react": "^4.0.0",
     "@astrojs/tailwind": "^5.1.0",
     "astro": "^4.16.0",
