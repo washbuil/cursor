@@ -1,0 +1,295 @@
+---
+import '../../styles/globals.css';
+import { getDb } from '../../lib/firebase';
+import { getDocs, getDoc, collection, doc } from 'firebase/firestore';
+
+const PLACEHOLDER_IMAGE = 'https://placehold.co/800x500?text=No+Image';
+
+export async function getStaticPaths() {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snapshot = await getDocs(collection(db, 'cars'));
+    return snapshot.docs.map((d) => ({ params: { id: d.id } }));
+  } catch (_err) {
+    return [];
+  }
+}
+
+interface CarData {
+  id: string;
+  name: string;
+  subtitle: string;
+  description: string;
+  image: string;
+  images: string[];
+  pricePerDay: number;
+  rating: number;
+  reviews: number;
+  location: string;
+  capacity: string;
+  features: string[];
+  pickupLocation: { name: string; address: string; hours: string; phone: string };
+}
+
+function getImageUrl(value: unknown): string {
+  if (value == null || String(value).trim() === '') return PLACEHOLDER_IMAGE;
+  const url = String(value).trim();
+  if (url.startsWith('gs://')) return PLACEHOLDER_IMAGE;
+  return url;
+}
+
+const { id } = Astro.params;
+let car: CarData | null = null;
+
+const db = getDb();
+if (db && id) {
+  try {
+    const docSnap = await getDoc(doc(db, 'cars', id));
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const mainImage = data.main_image ?? data.car_img;
+      const imageUrl = getImageUrl(mainImage);
+      const features: string[] = [];
+      if (data.pet === 1) features.push('ペット可');
+      if (data.toilet === 1) features.push('トイレ付');
+      if (data.aircon === 1) features.push('エアコン');
+      const rideCapa = data.ride_capa;
+      const capacityStr = rideCapa != null ? `${rideCapa}名` : '—';
+      const stationName = data.station_name != null ? String(data.station_name) : '';
+
+      // TODO: 正しい価格フィールド（例: price_day）に変更する
+      const pricePerDay = 15000;
+
+      car = {
+        id: docSnap.id,
+        name: data.car_name != null ? String(data.car_name) : '名前なし',
+        subtitle: rideCapa != null ? `${rideCapa}名様向け` : 'キャンピングカー',
+        description: data.description != null ? String(data.description) : 'この車両の詳細はお問い合わせください。',
+        image: imageUrl,
+        images: [imageUrl],
+        pricePerDay,
+        rating: 4.9,
+        reviews: 0,
+        location: stationName,
+        capacity: capacityStr,
+        features,
+        pickupLocation: {
+          name: stationName || '受取場所',
+          address: data.station_address != null ? String(data.station_address) : '—',
+          hours: data.station_hours != null ? String(data.station_hours) : '—',
+          phone: data.station_phone != null ? String(data.station_phone) : '—',
+        },
+      };
+    }
+  } catch (_err) {
+    car = null;
+  }
+}
+
+function formatPrice(value: number): string {
+  return `¥${value.toLocaleString()}`;
+}
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={car ? `${car.name} - キャンピングカーレンタル` : '車両詳細'} />
+    <title>{car ? `${car.name} | キャンピングカーレンタル` : '車両が見つかりません'}</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <header class="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+      <div class="container mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+        <a href="/" class="text-lg font-bold text-primary">キャンピングカーレンタル</a>
+        <nav class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+          <a href="/design-demo#vehicles" class="hover:text-foreground">車両</a>
+          <a href="/design-demo#features" class="hover:text-foreground">特徴</a>
+          <a href="/design-demo#how-it-works" class="hover:text-foreground">ご利用の流れ</a>
+          <a href="/design-demo#faq" class="hover:text-foreground">よくある質問</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="pt-20">
+      {!car ? (
+        <div class="container mx-auto max-w-6xl px-4 py-16 text-center">
+          <h1 class="text-2xl font-bold text-foreground">車両が見つかりません</h1>
+          <p class="mt-4 text-muted-foreground">指定されたIDの車両は存在しないか、削除された可能性があります。</p>
+          <a href="/design-demo" class="mt-6 inline-block rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90">一覧に戻る</a>
+        </div>
+      ) : (
+        <div class="container mx-auto px-4 py-8">
+          <div class="flex flex-col gap-8 lg:flex-row">
+            <div class="lg:w-2/3">
+              <div class="mb-6 flex flex-col gap-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <h1 class="text-2xl font-bold text-foreground text-balance md:text-3xl">{car.name}</h1>
+                    <p class="mt-1 text-muted-foreground">{car.subtitle}</p>
+                  </div>
+                  <div class="flex shrink-0 gap-2">
+                    <button type="button" class="rounded-md border border-border bg-transparent p-2 hover:bg-muted" aria-label="共有">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    </button>
+                    <button type="button" class="rounded-md border border-border bg-transparent p-2 hover:bg-muted" aria-label="お気に入り">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-4 text-sm">
+                  <div class="flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="text-primary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span class="font-medium">{car.rating}</span>
+                    <span class="text-muted-foreground">({car.reviews}件のレビュー)</span>
+                  </div>
+                  {car.location && (
+                    <div class="flex items-center gap-1 text-muted-foreground">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <span>{car.location}</span>
+                    </div>
+                  )}
+                  <span class="rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">即時予約可</span>
+                </div>
+              </div>
+
+              <!-- PhotoGallery -->
+              <div class="mb-8 overflow-hidden rounded-lg border border-border bg-muted">
+                <img src={car.image} alt={car.name} class="h-auto w-full object-cover" width="800" height="500" />
+                {car.images.length > 1 && (
+                  <div class="grid grid-cols-3 gap-2 p-2">
+                    {car.images.slice(1, 4).map((img, i) => (
+                      <img key={i} src={img} alt={`${car.name} ${i + 2}`} class="aspect-video w-full rounded object-cover" width="200" height="133" />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div class="space-y-8">
+                <section>
+                  <h2 class="mb-4 text-xl font-semibold text-foreground">この車両について</h2>
+                  <div class="prose prose-neutral max-w-none">
+                    {car.description.split('\n\n').map((paragraph, index) => (
+                      <p key={index} class="mb-4 leading-relaxed text-muted-foreground">{paragraph}</p>
+                    ))}
+                  </div>
+                </section>
+
+                <!-- VehicleSpecs -->
+                <section>
+                  <h2 class="mb-4 text-xl font-semibold text-foreground">諸元・スペック</h2>
+                  <dl class="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2">
+                    <div class="flex justify-between border-b border-border pb-2 sm:border-b-0 sm:border-r sm:pr-4">
+                      <dt class="text-muted-foreground">定員</dt>
+                      <dd class="font-medium text-foreground">{car.capacity}</dd>
+                    </div>
+                    <div class="flex justify-between pb-2 sm:border-b-0 sm:border-r sm:pr-4">
+                      <dt class="text-muted-foreground">受取場所</dt>
+                      <dd class="font-medium text-foreground">{car.pickupLocation.name || '—'}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <!-- EquipmentList (features as badges) -->
+                {car.features.length > 0 && (
+                  <section>
+                    <h2 class="mb-4 text-xl font-semibold text-foreground">装備・特徴</h2>
+                    <ul class="flex flex-wrap gap-2">
+                      {car.features.map((f) => (
+                        <li>
+                          <span class="inline-flex rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <!-- LocationMap -->
+                <section>
+                  <h2 class="mb-4 text-xl font-semibold text-foreground">受取・返却場所</h2>
+                  <div class="rounded-lg border border-border bg-card p-4">
+                    <p class="font-medium text-foreground">{car.pickupLocation.name}</p>
+                    <p class="mt-1 text-sm text-muted-foreground">{car.pickupLocation.address}</p>
+                    <p class="mt-1 text-sm text-muted-foreground">営業: {car.pickupLocation.hours}</p>
+                    <p class="mt-1 text-sm text-muted-foreground">TEL: {car.pickupLocation.phone}</p>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <!-- BookingCard (UI only) -->
+            <aside class="lg:w-1/3">
+              <div class="lg:sticky lg:top-24">
+                <div class="rounded-lg border border-border bg-card shadow-lg">
+                  <div class="border-b border-border p-4 pb-4">
+                    <div class="flex items-baseline justify-between">
+                      <div>
+                        <span class="text-2xl font-bold text-foreground">{car.pricePerDay.toLocaleString()}</span>
+                        <span class="ml-1 text-muted-foreground">円 / 日</span>
+                      </div>
+                      <div class="flex items-center gap-1 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="text-primary"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span class="font-medium">{car.rating}</span>
+                        <span class="text-muted-foreground">({car.reviews}件)</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="space-y-4 p-4">
+                    <div class="overflow-hidden rounded-lg border border-border">
+                      <div class="border-b border-border p-3">
+                        <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">レンタル期間</div>
+                        <div class="mt-1 flex items-center gap-2 text-muted-foreground">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                          <span>日程を選択</span>
+                        </div>
+                      </div>
+                      <div class="p-3">
+                        <div class="text-xs font-medium uppercase tracking-wide text-muted-foreground">乗車人数</div>
+                        <div class="mt-1 flex items-center justify-between">
+                          <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span class="text-foreground">2名</span>
+                          </div>
+                          <div class="flex gap-2">
+                            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-transparent text-foreground hover:bg-muted" aria-label="減らす">−</button>
+                            <button type="button" class="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-transparent text-foreground hover:bg-muted" aria-label="増やす">+</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" class="h-12 w-full rounded-md bg-primary text-base font-semibold text-primary-foreground hover:opacity-90">予約する</button>
+                    <p class="text-center text-sm text-muted-foreground">料金を確認するには日程を選択してください</p>
+                  </div>
+                  <div class="flex flex-col gap-3 border-t border-border p-4 pt-0">
+                    <div class="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <span>予約確定まで料金はかかりません</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      )}
+    </main>
+
+    <footer class="mt-12 border-t border-border bg-primary py-12 text-primary-foreground">
+      <div class="container mx-auto max-w-6xl px-4">
+        <div class="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <a href="/" class="text-lg font-bold text-primary-foreground">キャンピングカーレンタル</a>
+          <nav class="flex flex-wrap items-center justify-center gap-6 text-sm text-primary-foreground/90">
+            <a href="/design-demo#vehicles" class="hover:text-primary-foreground">車両</a>
+            <a href="/design-demo#features" class="hover:text-primary-foreground">特徴</a>
+            <a href="/design-demo#how-it-works" class="hover:text-primary-foreground">ご利用の流れ</a>
+            <a href="/design-demo#faq" class="hover:text-primary-foreground">よくある質問</a>
+            <a href="#" class="hover:text-primary-foreground">お問い合わせ</a>
+          </nav>
+        </div>
+        <p class="mt-8 text-center text-sm text-primary-foreground/70">© {new Date().getFullYear()} キャンピングカーレンタル. All rights reserved.</p>
+      </div>
+    </footer>
+  </body>
+</html>

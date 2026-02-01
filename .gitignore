@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# environment (Firebase の秘密情報を含むため)
+.env
+.env.local
+.env.*.local
+
+# Astro
+.astro/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*

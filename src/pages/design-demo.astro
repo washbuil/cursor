@@ -1,0 +1,410 @@
+---
+import '../styles/globals.css';
+import { getDb } from '../lib/firebase';
+import { getDocs, collection } from 'firebase/firestore';
+
+const PLACEHOLDER_IMAGE = 'https://placehold.co/600x400?text=No+Image';
+
+interface Vehicle {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  capacity: string;
+  location: string;
+  features: string[];
+}
+
+let vehicles: Vehicle[] = [];
+
+const db = getDb();
+if (db) {
+  try {
+    const snapshot = await getDocs(collection(db, 'cars'));
+    console.log('[design-demo] Firestore cars 取得件数:', snapshot.size);
+
+    vehicles = snapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      // gs:// で始まる画像はそのまま表示できないため警告
+      const carImg = data.car_img;
+      if (carImg != null && String(carImg).startsWith('gs://')) {
+        console.warn('[design-demo] 画像URL変換が必要 (car_img):', doc.id, carImg);
+      }
+      const mainImage = data.main_image;
+      if (mainImage != null && String(mainImage).startsWith('gs://')) {
+        console.warn('[design-demo] 画像URL変換が必要 (main_image):', doc.id, mainImage);
+      }
+
+      const features: string[] = [];
+      if (data.pet === 1) features.push('ペット可');
+      if (data.toilet === 1) features.push('トイレ付');
+      if (data.aircon === 1) features.push('エアコン');
+
+      const imageUrl =
+        mainImage != null && String(mainImage).trim() !== ''
+          ? String(mainImage).trim()
+          : PLACEHOLDER_IMAGE;
+
+      const rideCapa = data.ride_capa;
+      const capacityStr = rideCapa != null ? `${rideCapa}名` : '—';
+
+      // TODO: 正しい価格フィールド（例: price_day）に変更する
+      const price = 15000;
+
+      return {
+        id: doc.id,
+        name: data.car_name != null ? String(data.car_name) : '名前なし',
+        image: imageUrl,
+        price,
+        capacity: capacityStr,
+        location: data.station_name != null ? String(data.station_name) : '',
+        features,
+      };
+    });
+  } catch (err) {
+    console.error('[design-demo] Firestore 取得エラー:', err);
+    vehicles = [];
+  }
+} else {
+  console.log('[design-demo] Firebase 未設定のため cars を取得しません (.env の PUBLIC_FIREBASE_* を確認してください)');
+}
+
+function formatPrice(value: number): string {
+  return `¥${value.toLocaleString()}`;
+}
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="日本全国のキャンピングカーを簡単検索・予約。週末の小旅行から長期の冒険まで。" />
+    <title>キャンピングカーレンタル - デモ</title>
+  </head>
+  <body class="min-h-screen flex flex-col bg-background text-foreground">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+      <div class="container mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+        <a href="/" class="text-lg font-bold text-primary">キャンピングカーレンタル</a>
+        <nav class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+          <a href="#vehicles" class="hover:text-foreground">車両</a>
+          <a href="#features" class="hover:text-foreground">特徴</a>
+          <a href="#how-it-works" class="hover:text-foreground">ご利用の流れ</a>
+          <a href="#faq" class="hover:text-foreground">よくある質問</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <!-- Hero -->
+      <section class="relative min-h-[600px] lg:min-h-[700px]">
+        <div class="absolute inset-0">
+          <img
+            src="https://placehold.co/1920x800?text=Hero+Campervan"
+            alt="美しい山と湖を背景にしたキャンピングカー"
+            class="h-full w-full object-cover"
+            width="1920"
+            height="800"
+          />
+          <div class="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-transparent" />
+        </div>
+
+        <div class="relative container mx-auto px-4 py-20 lg:py-32">
+          <div class="max-w-2xl">
+            <h1 class="text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl text-balance">
+              自由な旅を、
+              <br />
+              あなたの手に
+            </h1>
+            <p class="mt-6 max-w-xl text-lg text-white/90 md:text-xl leading-relaxed">
+              日本全国のキャンピングカーを簡単検索・予約。
+              週末の小旅行から長期の冒険まで、あなたの旅のスタイルに合わせた一台を見つけましょう。
+            </p>
+          </div>
+
+          <form class="mt-10 max-w-4xl rounded-lg bg-card border border-border p-6 shadow-xl" action="#" method="get">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div class="space-y-2">
+                <label for="pickup" class="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  受取場所
+                </label>
+                <select id="pickup" name="pickup" class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
+                  <option value="">場所を選択</option>
+                  <option value="tokyo">東京</option>
+                  <option value="osaka">大阪</option>
+                  <option value="fukuoka">福岡</option>
+                  <option value="sapporo">札幌</option>
+                  <option value="nagoya">名古屋</option>
+                </select>
+              </div>
+
+              <div class="space-y-2">
+                <label for="start-date" class="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" x2="16" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="2" y2="6" />
+                    <line x1="3" x2="21" y1="10" y2="10" />
+                  </svg>
+                  出発日
+                </label>
+                <input id="start-date" name="start-date" type="date" class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background" />
+              </div>
+
+              <div class="space-y-2">
+                <label for="end-date" class="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" x2="16" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="2" y2="6" />
+                    <line x1="3" x2="21" y1="10" y2="10" />
+                  </svg>
+                  返却日
+                </label>
+                <input id="end-date" name="end-date" type="date" class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background" />
+              </div>
+
+              <div class="space-y-2">
+                <label for="guests" class="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  乗車人数
+                </label>
+                <select id="guests" name="guests" class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background">
+                  <option value="">人数を選択</option>
+                  <option value="2">2名</option>
+                  <option value="3">3名</option>
+                  <option value="4">4名</option>
+                  <option value="5">5名</option>
+                  <option value="6">6名以上</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+              <button type="submit" class="w-full rounded-md bg-primary px-12 py-3 text-base font-medium text-primary-foreground transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background md:w-auto">
+                空き状況を検索
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- VehicleList -->
+      <section id="vehicles" class="py-20 bg-secondary">
+        <div class="container mx-auto max-w-6xl px-4">
+          <div class="mx-auto max-w-2xl text-center">
+            <h2 class="text-3xl font-bold text-foreground md:text-4xl">車両ラインナップ</h2>
+            <p class="mt-4 leading-relaxed text-muted-foreground">
+              コンパクトな2人乗りから、ファミリー向けの大型車まで、
+              あなたの旅のスタイルに合わせた車両をご用意しています。
+            </p>
+          </div>
+
+          {vehicles.length === 0 ? (
+            <p class="mt-12 text-center text-muted-foreground">
+              Firestore の cars コレクションにデータがありません。.env に Firebase 設定を入れたうえで、cars コレクションを追加してください。
+            </p>
+          ) : (
+          <div class="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {vehicles.map((vehicle) => (
+              <article class="overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+                <div class="aspect-[3/2] overflow-hidden bg-muted">
+                  <img
+                    src={vehicle.image}
+                    alt={vehicle.name}
+                    class="h-full w-full object-cover"
+                    width="600"
+                    height="400"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="p-5">
+                  <h3 class="text-lg font-semibold text-card-foreground">{vehicle.name}</h3>
+                  <p class="mt-2 text-xl font-bold text-primary">
+                    {formatPrice(vehicle.price)}<span class="text-sm font-normal text-muted-foreground">/日</span>
+                  </p>
+                  <ul class="mt-2 flex flex-wrap gap-2 text-sm text-muted-foreground">
+                    <li>{vehicle.capacity}</li>
+                    {vehicle.location && <li aria-hidden="true">・</li>}
+                    {vehicle.location && <li>{vehicle.location}</li>}
+                  </ul>
+                  {vehicle.features.length > 0 && (
+                    <ul class="mt-3 flex flex-wrap gap-1.5" aria-label="特徴">
+                      {vehicle.features.map((f) => (
+                        <li>
+                          <span class="inline-flex rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                            {f}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <a
+                    href={`/cars/${vehicle.id}`}
+                    class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                  >
+                    詳細を見る
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+          )}
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" class="py-20 bg-background">
+        <div class="container mx-auto max-w-6xl px-4">
+          <div class="mx-auto max-w-2xl text-center">
+            <h2 class="text-3xl font-bold text-foreground md:text-4xl">選ばれる理由</h2>
+            <p class="mt-4 leading-relaxed text-muted-foreground">
+              安心・安全にキャンピングカーライフをお楽しみいただくためのサポートをご用意しています。
+            </p>
+          </div>
+          <div class="mt-12 grid gap-8 md:grid-cols-3">
+            <div class="rounded-lg border border-border bg-card p-6 text-center">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <h3 class="mt-4 font-semibold text-foreground">安心の保険</h3>
+              <p class="mt-2 text-sm text-muted-foreground">全車両保険加入。万が一のときも安心です。</p>
+            </div>
+            <div class="rounded-lg border border-border bg-card p-6 text-center">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+              </div>
+              <h3 class="mt-4 font-semibold text-foreground">24時間サポート</h3>
+              <p class="mt-2 text-sm text-muted-foreground">走行中のお問い合わせも専用ダイヤルで対応。</p>
+            </div>
+            <div class="rounded-lg border border-border bg-card p-6 text-center">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </div>
+              <h3 class="mt-4 font-semibold text-foreground">全国ネットワーク</h3>
+              <p class="mt-2 text-sm text-muted-foreground">主要都市で受取・返却が可能です。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HowItWorks -->
+      <section id="how-it-works" class="py-20 bg-secondary">
+        <div class="container mx-auto max-w-6xl px-4">
+          <div class="mx-auto max-w-2xl text-center">
+            <h2 class="text-3xl font-bold text-foreground md:text-4xl">ご利用の流れ</h2>
+            <p class="mt-4 leading-relaxed text-muted-foreground">
+              検索から返却まで、3ステップで簡単にご利用いただけます。
+            </p>
+          </div>
+          <div class="mt-12 grid gap-8 md:grid-cols-3">
+            <div class="relative text-center">
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">1</div>
+              <h3 class="mt-4 font-semibold text-foreground">検索・予約</h3>
+              <p class="mt-2 text-sm text-muted-foreground">希望の地域・日程で車両を検索し、オンラインで予約します。</p>
+            </div>
+            <div class="relative text-center">
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">2</div>
+              <h3 class="mt-4 font-semibold text-foreground">受取・説明</h3>
+              <p class="mt-2 text-sm text-muted-foreground">店舗で車両を受け取り、使い方の説明を受けます。</p>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">3</div>
+              <h3 class="mt-4 font-semibold text-foreground">旅を楽しむ</h3>
+              <p class="mt-2 text-sm text-muted-foreground">返却日まで自由にドライブとキャンプをお楽しみください。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="py-20 bg-background">
+        <div class="container mx-auto max-w-3xl px-4">
+          <div class="text-center">
+            <h2 class="text-3xl font-bold text-foreground md:text-4xl">よくある質問</h2>
+            <p class="mt-4 text-muted-foreground">お問い合わせの多い内容をまとめました。</p>
+          </div>
+          <ul class="mt-12 space-y-2">
+            <li class="rounded-lg border border-border">
+              <details class="group">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  免許証は普通免許で運転できますか？
+                  <span class="shrink-0 transition-transform group-open:rotate-180">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </span>
+                </summary>
+                <p class="border-t border-border px-4 py-3 text-sm text-muted-foreground">
+                  車両により異なります。2トン未満のキャンピングカーは普通免許で運転可能です。それ以上の車両は準中型または大型免許が必要な場合があります。各車両の詳細ページでご確認ください。
+                </p>
+              </details>
+            </li>
+            <li class="rounded-lg border border-slate-200">
+              <details class="group">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 font-medium text-slate-900 [&::-webkit-details-marker]:hidden">
+                  キャンセルはできますか？
+                  <span class="shrink-0 transition-transform group-open:rotate-180">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </span>
+                </summary>
+                <p class="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+                  出発日の〇日前までであればキャンセル料なしでキャンセル可能です。それ以降は規定のキャンセル料が発生します。詳細は利用規約をご確認ください。
+                </p>
+              </details>
+            </li>
+            <li class="rounded-lg border border-border">
+              <details class="group">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 font-medium text-foreground [&::-webkit-details-marker]:hidden">
+                  ペットは同乗できますか？
+                  <span class="shrink-0 transition-transform group-open:rotate-180">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </span>
+                </summary>
+                <p class="border-t border-border px-4 py-3 text-sm text-muted-foreground">
+                  車両によって異なります。ペット同乗可の車両には「ペットOK」の表記があります。同乗の際はキャリーのご持参や清潔の保持にご協力ください。
+                </p>
+              </details>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="border-t border-slate-200 bg-slate-900 py-12 text-slate-300">
+        <div class="container mx-auto max-w-6xl px-4">
+          <div class="flex flex-col items-center justify-between gap-6 md:flex-row">
+            <a href="/" class="text-lg font-bold text-primary-foreground">キャンピングカーレンタル</a>
+            <nav class="flex flex-wrap items-center justify-center gap-6 text-sm text-primary-foreground/90">
+              <a href="#vehicles" class="hover:text-primary-foreground">車両</a>
+              <a href="#features" class="hover:text-primary-foreground">特徴</a>
+              <a href="#how-it-works" class="hover:text-primary-foreground">ご利用の流れ</a>
+              <a href="#faq" class="hover:text-primary-foreground">よくある質問</a>
+              <a href="#" class="hover:text-primary-foreground">お問い合わせ</a>
+            </nav>
+          </div>
+          <p class="mt-8 text-center text-sm text-primary-foreground/70">
+            © {new Date().getFullYear()} キャンピングカーレンタル. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>

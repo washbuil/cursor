@@ -1,0 +1,107 @@
+---
+import { getDb } from '../lib/firebase';
+import { getDocs, collection } from 'firebase/firestore';
+
+const PLACEHOLDER_IMAGE = 'https://placehold.co/600x400?text=No+Image';
+
+interface VehicleDoc {
+  id?: string;
+  name?: string;
+  image?: string;
+  price?: number;
+  features?: string[];
+  description?: string;
+  [key: string]: unknown;
+}
+
+let vehicles: VehicleDoc[] = [];
+
+const db = getDb();
+if (db) {
+  try {
+    const snapshot = await getDocs(collection(db, 'vehicles'));
+    vehicles = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as VehicleDoc[];
+  } catch (_err) {
+    vehicles = [];
+  }
+}
+
+function formatPrice(value: number | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  return `¥${value.toLocaleString()}`;
+}
+
+function getImageUrl(vehicle: VehicleDoc): string {
+  const url = vehicle.image;
+  return typeof url === 'string' && url.trim() ? url.trim() : PLACEHOLDER_IMAGE;
+}
+
+function getFeatures(vehicle: VehicleDoc): string[] {
+  const f = vehicle.features;
+  if (Array.isArray(f)) return f.filter((x): x is string => typeof x === 'string');
+  return [];
+}
+---
+
+<section class="vehicle-list grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {vehicles.length === 0 ? (
+    <p class="col-span-full py-12 text-center text-amber-800/80">
+      Firestore の vehicles コレクションにデータがありません。.env に Firebase 設定を入れたうえで、vehicles コレクションを追加してください。
+    </p>
+  ) : (
+    vehicles.map((vehicle) => {
+      const imageUrl = getImageUrl(vehicle);
+      const priceStr = formatPrice(vehicle.price);
+      const features = getFeatures(vehicle);
+      const name = vehicle.name ?? '名前なし';
+      return (
+        <article
+          class="overflow-hidden rounded-xl border border-amber-200/60 bg-white shadow-md transition-shadow hover:shadow-lg"
+        >
+          <div class="aspect-[3/2] overflow-hidden bg-amber-50">
+            <img
+              src={imageUrl}
+              alt={name}
+              class="h-full w-full object-cover"
+              width="600"
+              height="400"
+              loading="lazy"
+            />
+          </div>
+          <div class="p-4">
+            <h3 class="mb-2 text-lg font-semibold text-amber-900">{name}</h3>
+            <p class="mb-3 text-xl font-bold text-amber-700">{priceStr}<span class="text-sm font-normal text-amber-600">/日</span></p>
+            {features.length > 0 && (
+              <ul class="mb-4 flex flex-wrap gap-1.5" aria-label="特徴">
+                {features.map((feature) => (
+                  <li>
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800"
+                    >
+                      <span aria-hidden="true" class="inline-block size-3.5 shrink-0 rounded-full bg-amber-400"></span>
+                      {feature}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <a
+              href={`/vehicles/${vehicle.id ?? '#'}`}
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              詳細を見る
+            </a>
+          </div>
+        </article>
+      );
+    })
+  )}
+</section>
