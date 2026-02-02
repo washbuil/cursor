@@ -1,4 +1,10 @@
 ---
+/**
+ * このページはビルド時に静的生成されます（prerender）。
+ * Cloudflare Worker 上で Firestore を叩かず、1101 エラーを防ぎます。
+ */
+export const prerender = true;
+
 import '../styles/globals.css';
 import { getDb } from '../lib/firebase';
 import { getDocs, collection } from 'firebase/firestore';
