@@ -17,9 +17,9 @@ interface Vehicle {
 
 let vehicles: Vehicle[] = [];
 
-const db = getDb();
-if (db) {
-  try {
+try {
+  const db = getDb();
+  if (db) {
     const snapshot = await getDocs(collection(db, 'cars'));
     console.log('[design-demo] Firestore cars 取得件数:', snapshot.size);
 
@@ -62,12 +62,12 @@ if (db) {
         features,
       };
     });
-  } catch (err) {
-    console.error('[design-demo] Firestore 取得エラー:', err);
-    vehicles = [];
+  } else {
+    console.log('[design-demo] Firebase 未設定のため cars を取得しません (.env の PUBLIC_FIREBASE_* を確認してください)');
   }
-} else {
-  console.log('[design-demo] Firebase 未設定のため cars を取得しません (.env の PUBLIC_FIREBASE_* を確認してください)');
+} catch (err) {
+  console.error('[design-demo] データ取得エラー (Worker 1101 対策):', err);
+  vehicles = [];
 }
 
 function formatPrice(value: number): string {

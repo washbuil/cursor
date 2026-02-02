@@ -14,26 +14,35 @@ let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 
 /**
- * Firebase アプリを初期化し、設定済みの場合にのみインスタンスを返す
+ * Firebase アプリを初期化し、設定済みの場合にのみインスタンスを返す。
+ * Cloudflare Workers 等で initializeApp が失敗しても例外を投げず null を返す。
  */
 function getFirebaseApp(): FirebaseApp | null {
   if (app) return app;
   const hasConfig = firebaseConfig.apiKey && firebaseConfig.projectId;
   if (!hasConfig) return null;
-  app = initializeApp(firebaseConfig);
-  return app;
+  try {
+    app = initializeApp(firebaseConfig);
+    return app;
+  } catch (_err) {
+    return null;
+  }
 }
 
 /**
- * Firestore インスタンスを取得する
- * .env に Firebase の値が設定されていない場合は null を返す
+ * Firestore インスタンスを取得する。
+ * .env が未設定または Cloudflare Workers 上で失敗した場合は null を返す（例外は投げない）。
  */
 export function getDb(): Firestore | null {
   if (db) return db;
-  const firebaseApp = getFirebaseApp();
-  if (!firebaseApp) return null;
-  db = getFirestore(firebaseApp);
-  return db;
+  try {
+    const firebaseApp = getFirebaseApp();
+    if (!firebaseApp) return null;
+    db = getFirestore(firebaseApp);
+    return db;
+  } catch (_err) {
+    return null;
+  }
 }
 
 export { getFirebaseApp };
