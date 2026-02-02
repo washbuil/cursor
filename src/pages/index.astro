@@ -116,20 +116,21 @@ function formatPrice(value: number): string {
           <div class="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-transparent" />
         </div>
 
-        <div class="relative container mx-auto px-4 py-20 lg:py-32">
+        <div class="relative flex min-h-[600px] flex-col justify-center items-center text-center container mx-auto px-4 py-20 lg:min-h-[700px] lg:py-32 w-full">
           <div class="max-w-2xl">
             <h1 class="text-4xl font-bold leading-tight text-white md:text-5xl lg:text-6xl text-balance">
               自由な旅を、
               <br />
               あなたの手に
             </h1>
-            <p class="mt-6 max-w-xl text-lg text-white/90 md:text-xl leading-relaxed">
+            <p class="mt-6 max-w-xl mx-auto text-lg text-white/90 md:text-xl leading-relaxed">
               日本全国のキャンピングカーを簡単検索・予約。
               週末の小旅行から長期の冒険まで、あなたの旅のスタイルに合わせた一台を見つけましょう。
             </p>
           </div>
 
-          <form class="mt-10 max-w-4xl rounded-lg bg-card border border-border p-6 shadow-xl" action="#" method="get">
+          <div class="w-full max-w-4xl mt-10">
+          <form class="rounded-lg bg-card border border-border p-6 shadow-xl" action="#" method="get">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div class="space-y-2">
                 <label for="pickup" class="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -202,6 +203,7 @@ function formatPrice(value: number): string {
               </button>
             </div>
           </form>
+          </div>
         </div>
       </section>
 
