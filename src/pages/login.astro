@@ -1,0 +1,161 @@
+---
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ログイン - キャンピングカーレンタル" />
+    <title>ログイン | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4 py-12">
+      <div id="login-form-container" class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg sm:p-8">
+        <h1 class="text-center text-xl font-bold text-foreground sm:text-2xl">ログイン</h1>
+
+        <form id="login-form" class="mt-6 space-y-4">
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-foreground">メールアドレス</span>
+            <input
+              type="email"
+              name="email"
+              id="login-email"
+              required
+              autocomplete="email"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="example@email.com"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-foreground">パスワード</span>
+            <input
+              type="password"
+              name="password"
+              id="login-password"
+              required
+              autocomplete="current-password"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="••••••••"
+            />
+          </label>
+          <div id="login-error" class="min-h-[1.25rem] text-sm text-destructive" role="alert" aria-live="polite"></div>
+          <button
+            type="submit"
+            id="login-submit"
+            class="h-11 w-full rounded-md bg-primary font-semibold text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
+          >
+            ログイン
+          </button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-muted-foreground">
+          アカウントをお持ちでない方は
+          <a href="/signup" class="font-medium text-primary underline hover:no-underline">新規登録</a>
+        </p>
+      </div>
+
+      <div id="verification-container" class="hidden w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg sm:p-8">
+        <h2 class="text-center text-lg font-bold text-foreground">メール認証待ち</h2>
+        <p class="mt-4 text-center text-sm text-muted-foreground">メールアドレスの認証が完了していません。</p>
+        <p class="mt-2 text-center text-sm text-muted-foreground">確認メールのリンクをクリックしてください。</p>
+        <div class="mt-6 space-y-3">
+          <button type="button" id="btn-resend" class="h-11 w-full rounded-md bg-primary font-semibold text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50">
+            確認メールを再送信する
+          </button>
+          <button type="button" id="btn-back-to-login" class="h-11 w-full rounded-md border border-border bg-background font-medium text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            ログイン画面に戻る（ログアウト）
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="mt-auto border-t border-border py-6">
+      <div class="container mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} キャンピングカーレンタル
+      </div>
+    </footer>
+
+    <script>
+      import { login, logout, resendVerificationEmail } from '../lib/auth';
+      import type { User } from 'firebase/auth';
+
+      const form = document.getElementById('login-form') as HTMLFormElement;
+      const loginFormContainer = document.getElementById('login-form-container');
+      const verificationContainer = document.getElementById('verification-container');
+      const emailInput = document.getElementById('login-email') as HTMLInputElement;
+      const passwordInput = document.getElementById('login-password') as HTMLInputElement;
+      const errorEl = document.getElementById('login-error') as HTMLDivElement;
+      const submitBtn = document.getElementById('login-submit') as HTMLButtonElement;
+      const btnResend = document.getElementById('btn-resend') as HTMLButtonElement;
+      const btnBackToLogin = document.getElementById('btn-back-to-login') as HTMLButtonElement;
+
+      let currentUser: User | null = null;
+
+      function setError(message: string) {
+        errorEl.textContent = message;
+      }
+
+      function clearError() {
+        errorEl.textContent = '';
+      }
+
+      function showVerificationScreen() {
+        loginFormContainer?.classList.add('hidden');
+        verificationContainer?.classList.remove('hidden');
+      }
+
+      function showLoginForm() {
+        verificationContainer?.classList.add('hidden');
+        loginFormContainer?.classList.remove('hidden');
+      }
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearError();
+        const email = emailInput?.value?.trim() ?? '';
+        const password = passwordInput?.value ?? '';
+        if (!email || !password) {
+          setError('メールアドレスとパスワードを入力してください。');
+          return;
+        }
+        submitBtn.disabled = true;
+        try {
+          const user = await login(email, password);
+          if (user.emailVerified) {
+            window.location.href = '/';
+          } else {
+            currentUser = user;
+            showVerificationScreen();
+            submitBtn.disabled = false;
+          }
+        } catch (_err) {
+          setError('メールアドレスかパスワードが間違っています。');
+          submitBtn.disabled = false;
+        }
+      });
+
+      btnResend?.addEventListener('click', async () => {
+        if (!currentUser) return;
+        btnResend.disabled = true;
+        try {
+          await resendVerificationEmail(currentUser);
+          alert('再送信しました');
+        } catch (_err) {
+          alert('再送信に失敗しました。しばらく経ってからお試しください。');
+        }
+        btnResend.disabled = false;
+      });
+
+      btnBackToLogin?.addEventListener('click', async () => {
+        await logout();
+        currentUser = null;
+        showLoginForm();
+      });
+    </script>
+  </body>
+</html>

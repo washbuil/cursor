@@ -1,0 +1,133 @@
+---
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="新規登録 - キャンピングカーレンタル" />
+    <title>新規登録 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4 py-12">
+      <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg sm:p-8">
+        <h1 class="text-center text-xl font-bold text-foreground sm:text-2xl">新規登録</h1>
+        <p class="mt-3 text-center text-sm text-muted-foreground">
+          新規登録ありがとうございます。新規登録すると空車検索、車両予約など様々な機能が使えます。
+        </p>
+
+        <form id="signup-form" class="mt-6 space-y-4">
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-foreground">ニックネーム</span>
+            <input
+              type="text"
+              name="display_name"
+              id="signup-display-name"
+              required
+              autocomplete="username"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="表示名"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-foreground">メールアドレス</span>
+            <input
+              type="email"
+              name="email"
+              id="signup-email"
+              required
+              autocomplete="email"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="example@email.com"
+            />
+          </label>
+          <label class="block">
+            <span class="mb-1 block text-sm font-medium text-foreground">パスワード</span>
+            <input
+              type="password"
+              name="password"
+              id="signup-password"
+              required
+              autocomplete="new-password"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="••••••••"
+            />
+          </label>
+          <div id="signup-error" class="min-h-[1.25rem] text-sm text-destructive" role="alert" aria-live="polite"></div>
+          <button
+            type="submit"
+            id="signup-submit"
+            class="h-11 w-full rounded-md bg-green-700 font-semibold text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:opacity-50"
+          >
+            新規登録
+          </button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-muted-foreground">
+          すでにアカウントをお持ちの方は
+          <a href="/login" class="font-medium text-primary underline hover:no-underline">ログイン</a>
+        </p>
+      </div>
+    </main>
+
+    <footer class="mt-auto border-t border-border py-6">
+      <div class="container mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} キャンピングカーレンタル
+      </div>
+    </footer>
+
+    <script>
+      import { registerWithEmail } from '../lib/auth';
+
+      const form = document.getElementById('signup-form') as HTMLFormElement;
+      const displayNameInput = document.getElementById('signup-display-name') as HTMLInputElement;
+      const emailInput = document.getElementById('signup-email') as HTMLInputElement;
+      const passwordInput = document.getElementById('signup-password') as HTMLInputElement;
+      const errorEl = document.getElementById('signup-error') as HTMLDivElement;
+      const submitBtn = document.getElementById('signup-submit') as HTMLButtonElement;
+
+      function setError(message: string) {
+        errorEl.textContent = message;
+      }
+
+      function clearError() {
+        errorEl.textContent = '';
+      }
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearError();
+        const displayName = displayNameInput?.value?.trim() ?? '';
+        const email = emailInput?.value?.trim() ?? '';
+        const password = passwordInput?.value ?? '';
+        if (!displayName || !email || !password) {
+          setError('ニックネーム・メールアドレス・パスワードを入力してください。');
+          return;
+        }
+        submitBtn.disabled = true;
+        try {
+          await registerWithEmail(email, password, displayName);
+          alert('登録確認メールを送信しました。\nメール内のリンクをクリックして認証を完了させてからログインしてください。');
+          window.location.href = '/login';
+        } catch (err: unknown) {
+          let message = '登録中にエラーが発生しました。もう一度お試しください。';
+          const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+          if (code === 'auth/email-already-in-use') {
+            message = 'このメールアドレスは既に登録されています。';
+          } else if (code === 'auth/invalid-email') {
+            message = 'メールアドレスの形式が正しくありません。';
+          } else if (code === 'auth/weak-password') {
+            message = 'パスワードは6文字以上で入力してください。';
+          }
+          setError(message);
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

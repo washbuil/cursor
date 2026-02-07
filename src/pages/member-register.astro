@@ -1,0 +1,242 @@
+---
+export const prerender = false;
+
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+
+const PREFECTURES = [
+  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+];
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="会員情報登録 - キャンピングカーレンタル" />
+    <title>会員情報登録 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-2xl px-4 py-12">
+      <div id="member-loading" class="py-12 text-center text-muted-foreground">
+        読み込み中...
+      </div>
+      <div id="member-form-wrap" class="hidden">
+        <div class="mb-8 text-center">
+          <h1 class="text-2xl font-bold text-foreground md:text-3xl">会員登録</h1>
+          <p class="mt-2 text-muted-foreground">予約を行うには会員情報の登録が必要です。</p>
+        </div>
+
+        <form id="member-form" class="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">お名前 (姓・名)</label>
+            <div class="grid grid-cols-2 gap-4">
+              <input type="text" name="last_name" placeholder="姓" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" name="first_name" placeholder="名" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">フリガナ (セイ・メイ)</label>
+            <div class="grid grid-cols-2 gap-4">
+              <input type="text" name="last_name_kana" placeholder="セイ" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" name="first_name_kana" placeholder="メイ" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">携帯電話番号</label>
+            <input type="tel" name="mobile_phone" placeholder="09012345678" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">自宅電話番号 (任意)</label>
+            <input type="tel" name="phone_number" placeholder="0312345678" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium leading-none">郵便番号</label>
+              <input type="text" name="postal_code" placeholder="123-4567" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium leading-none">都道府県</label>
+              <select name="prf" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="">選択してください</option>
+                {PREFECTURES.map((pref) => (
+                  <option value={pref}>{pref}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">住所 (市区町村・番地)</label>
+            <input type="text" name="address" placeholder="〇〇市〇〇区〇〇町〇番地" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">建物名・部屋番号</label>
+            <input type="text" name="room_number" placeholder="〇〇マンション 101号室" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">お支払い方法</label>
+            <select name="payment_method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="銀行振込">銀行振込</option>
+              <option value="クレジットカード">クレジットカード</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">ペット乗車</label>
+            <select name="pet_ride" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="ペット乗車なし">ペット乗車なし</option>
+              <option value="ペット乗車あり">ペット乗車あり</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none">メモ (任意)</label>
+            <textarea name="memo" rows="3" placeholder="備考があれば入力" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"></textarea>
+          </div>
+
+          <div class="rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/30">
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="terms" name="terms" required class="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+              <label for="terms" class="text-sm font-medium leading-none">
+                <a href="#" class="text-primary underline underline-offset-4 hover:opacity-90">貸渡約款</a> に同意しました
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn" class="w-full rounded-md bg-primary py-3 text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            送信
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <footer class="mt-auto border-t border-border py-6">
+      <div class="container mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} キャンピングカーレンタル
+      </div>
+    </footer>
+
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.pageData = { apiToken };
+    </script>
+
+    <script>
+      import { initAuth, getCurrentUser } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { doc, updateDoc } from 'firebase/firestore';
+
+      const { apiToken } = window.pageData as { apiToken: string };
+      const API_MEMBER_ADD = 'https://roadcruise-share.com/api/member/add';
+
+      const loadingEl = document.getElementById('member-loading');
+      const formWrapEl = document.getElementById('member-form-wrap');
+      const form = document.getElementById('member-form') as HTMLFormElement | null;
+      const submitBtn = document.getElementById('submit-btn');
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initAuth((user) => {
+          if (!user) {
+            window.location.href = '/login';
+            return;
+          }
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (formWrapEl) formWrapEl.classList.remove('hidden');
+        });
+
+        form?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const user = getCurrentUser();
+
+          if (!user) {
+            alert('ログインセッションが切れました。再度ログインしてください。');
+            window.location.href = '/login';
+            return;
+          }
+
+          if (!submitBtn || !form) return;
+          submitBtn.disabled = true;
+          submitBtn.textContent = '送信中...';
+
+          try {
+            const fd = new FormData(form);
+            const paymentMethod = fd.get('payment_method') ?? '';
+            const petRide = fd.get('pet_ride') ?? '';
+            const originalMemo = (fd.get('memo') ?? '').toString().trim();
+
+            const combinedMemo = originalMemo
+              ? `${originalMemo}\n\n【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim()
+              : `【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim();
+
+            const payload = {
+              flutter_user_id: user.uid,
+              last_name: fd.get('last_name'),
+              first_name: fd.get('first_name'),
+              last_name_kana: fd.get('last_name_kana'),
+              first_name_kana: fd.get('first_name_kana'),
+              mobile_phone: fd.get('mobile_phone'),
+              phone_number: fd.get('phone_number') ?? '',
+              postal_code: fd.get('postal_code'),
+              prf: fd.get('prf'),
+              address: fd.get('address'),
+              room_number: fd.get('room_number') ?? '',
+              memo: combinedMemo,
+              payment_method: paymentMethod,
+              pet_ride: petRide,
+            };
+
+            const res = await fetch(API_MEMBER_ADD, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(errText || '登録に失敗しました');
+            }
+
+            const data = await res.json().catch(() => ({}));
+            console.log('Member Add Response:', data);
+
+            const db = getDb();
+            if (db) {
+              await updateDoc(doc(db, 'users', user.uid), {
+                is_member_registered: true,
+                ...(data.id != null && { member_id: data.id }),
+                payment_method: paymentMethod,
+                pet_ride: petRide,
+              });
+            }
+
+            alert('会員登録が完了しました。');
+            window.location.href = '/mypage';
+          } catch (err) {
+            console.error(err);
+            alert('登録に失敗しました: ' + (err instanceof Error ? err.message : '不明なエラー'));
+            submitBtn.disabled = false;
+            submitBtn.textContent = '送信';
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

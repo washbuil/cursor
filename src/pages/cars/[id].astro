@@ -1,5 +1,6 @@
 ---
 import '../../styles/globals.css';
+import Header from '../../components/Header.astro';
 import { getDb } from '../../lib/firebase';
 import { getDocs, getDoc, collection, doc } from 'firebase/firestore';
 
@@ -33,6 +34,11 @@ interface CarData {
   features: string[];
   pet: number;
   pickupLocation: { name: string; address: string; hours: string; phone: string };
+  /** add_form API用 */
+  stationCode: string;
+  ownerCode: string;
+  calendarId: string;
+  emails: string;
 }
 
 function getImageUrl(value: unknown): string {
@@ -65,6 +71,10 @@ if (db && id) {
       const pricePerDay = 15000;
 
       const realCarId = data.car_id != null ? Number(data.car_id) : 0;
+      const stationCode = data.station_code != null ? String(data.station_code) : '2';
+      const ownerCode = data.owner_code != null ? String(data.owner_code) : '1';
+      const calendarId = data.calendar_id != null ? String(data.calendar_id) : '1';
+      const emails = data.emails != null ? String(data.emails) : 'mail@washbuil.com';
 
       car = {
         id: docSnap.id,
@@ -87,6 +97,10 @@ if (db && id) {
           hours: data.station_hours != null ? String(data.station_hours) : '—',
           phone: data.station_phone != null ? String(data.station_phone) : '—',
         },
+        stationCode,
+        ownerCode,
+        calendarId,
+        emails,
       };
     }
   } catch (_err) {
@@ -108,17 +122,7 @@ function formatPrice(value: number): string {
     <title>{car ? `${car.name} | キャンピングカーレンタル` : '車両が見つかりません'}</title>
   </head>
   <body class="min-h-screen bg-background text-foreground">
-    <header class="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div class="container mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <a href="/" class="text-lg font-bold text-primary">キャンピングカーレンタル</a>
-        <nav class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
-          <a href="/#vehicles" class="hover:text-foreground">車両</a>
-          <a href="/#features" class="hover:text-foreground">特徴</a>
-          <a href="/#how-it-works" class="hover:text-foreground">ご利用の流れ</a>
-          <a href="/#faq" class="hover:text-foreground">よくある質問</a>
-        </nav>
-      </div>
-    </header>
+    <Header />
 
     <main class="pt-20">
       {!car ? (
@@ -311,8 +315,36 @@ function formatPrice(value: number): string {
       </div>
     </footer>
 
-    <script define:vars={{ carId: car?.carId ?? null, apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      (function () {
+ <script define:vars={{ 
+      carId: car?.carId ?? null, 
+      apiToken: import.meta.env.PUBLIC_API_TOKEN, 
+      stationCode: car?.stationCode ?? '2', 
+      ownerCode: car?.ownerCode ?? '1', 
+      calendarId: car?.calendarId ?? '1', 
+      emails: car?.emails ?? 'mail@washbuil.com', 
+      stationName: car?.pickupLocation?.name ?? '横浜上永谷', 
+      carName: car?.name ?? '車両名' 
+    }}>
+      // サーバーからの変数を window オブジェクト（グローバル変数）に保存します
+      window.bookingData = {
+        carId,
+        apiToken,
+        stationCode,
+        ownerCode,
+        calendarId,
+        emails,
+        stationName,
+        carName
+      };
+    </script>
+
+    <script>
+      import { getCurrentUser } from '../../lib/auth';
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // 保存したデータを取得
+        const { carId, apiToken, stationCode, ownerCode, calendarId, emails, stationName, carName } = window.bookingData;
+
         const API_PRICE_URL = 'https://roadcruise-share.com/api/lending/price_calculate';
 
         const card = document.getElementById('booking-card');
@@ -331,6 +363,7 @@ function formatPrice(value: number): string {
         if (!startDayInput || !endDayInput || !startTimeSelect || !endTimeSelect || !finalPriceEl || !messageEl || !reserveBtn) return;
 
         let lastFinalPrice = null;
+        let calculationResult = null;
 
         function setMessage(text, isError) {
           messageEl.textContent = text;
@@ -355,6 +388,7 @@ function formatPrice(value: number): string {
             setFinalPriceDisplay('---');
             setMessage('出発日・返却日・時間を選択すると料金が表示されます');
             lastFinalPrice = null;
+            calculationResult = null;
             return;
           }
 
@@ -364,6 +398,7 @@ function formatPrice(value: number): string {
             setFinalPriceDisplay('---');
             setMessage('返却日時は出発日時より後にしてください');
             lastFinalPrice = null;
+            calculationResult = null;
             return;
           }
 
@@ -389,6 +424,7 @@ function formatPrice(value: number): string {
               return res.json();
             })
             .then(function (data) {
+              calculationResult = data;
               const price = data.final_price != null ? data.final_price : null;
               lastFinalPrice = price;
               if (price != null) {
@@ -397,17 +433,35 @@ function formatPrice(value: number): string {
               } else {
                 setFinalPriceDisplay('---');
                 setMessage('料金を取得できませんでした');
+                calculationResult = null;
               }
             })
             .catch(function (err) {
               setFinalPriceDisplay('---');
               setMessage(err.message || '通信エラー', true);
               lastFinalPrice = null;
+              calculationResult = null;
               console.error('price_calculate error:', err);
             })
             .finally(function () {
               reserveBtn.disabled = false;
             });
+        }
+
+        // URLパラメータで検索条件をフォームに反映
+        const params = new URLSearchParams(window.location.search);
+        const pStartDay = params.get('start_day');
+        const pEndDay = params.get('end_day');
+        const pStartTime = params.get('start_time');
+        const pEndTime = params.get('end_time');
+
+        if (pStartDay) startDayInput.value = pStartDay;
+        if (pEndDay) endDayInput.value = pEndDay;
+        if (pStartTime) startTimeSelect.value = pStartTime;
+        if (pEndTime) endTimeSelect.value = pEndTime;
+
+        if (pStartDay && pEndDay) {
+          calculatePrice();
         }
 
         startDayInput.addEventListener('change', calculatePrice);
@@ -418,10 +472,94 @@ function formatPrice(value: number): string {
         endTimeSelect.addEventListener('change', calculatePrice);
         if (petCheckbox) petCheckbox.addEventListener('change', calculatePrice);
 
-        reserveBtn.addEventListener('click', function () {
-          alert('機能開発中');
+        // 予約ボタン処理
+        reserveBtn.addEventListener('click', function submitReservation() {
+          // 1. ログインチェック
+          const user = getCurrentUser();
+          if (!user) {
+            alert('予約するにはログインが必要です。');
+            window.location.href = '/login';
+            return;
+          }
+
+          // 2. 計算結果チェック
+          if (calculationResult == null) {
+            alert('料金を計算してから予約してください。日程・時間を選択し、料金が表示された状態で予約ボタンを押してください。');
+            return;
+          }
+          
+          const startDay = startDayInput.value;
+          const endDay = endDayInput.value;
+          const startTime = startTimeSelect.value;
+          const endTime = endTimeSelect.value;
+
+          if (!startDay || !endDay || startTime === '' || endTime === '') {
+            alert('出発日・返却日・時間を選択してください');
+            return;
+          }
+          
+          const startDt = new Date(startDay + 'T' + (startTime.length === 1 ? '0' + startTime : startTime) + ':00:00');
+          const endDt = new Date(endDay + 'T' + (endTime.length === 1 ? '0' + endTime : endTime) + ':00:00');
+          
+          if (endDt <= startDt) {
+            alert('返却日時は出発日時より後にしてください');
+            return;
+          }
+
+          if (!confirm('この内容で予約リクエストを送信しますか？')) return;
+
+          reserveBtn.disabled = true;
+          reserveBtn.textContent = '送信中...';
+
+          // 3. 送信データの作成 (ログインユーザー情報を使用)
+          const payload = {
+            calendar_id: calendarId,
+            car_id: String(carId), // 文字列に変換
+            owner_code: ownerCode,
+            station_code: stationCode,
+            emails: emails,
+            user_email: user.email ?? 'mail@washbuil.com',
+            first_name: 'ユーザー', // 必要であれば別途入力欄を作るか、DBから取得
+            last_name: '名',
+            flutter_user_id: user.uid, // ★ここがログインユーザーのIDになります
+            start_day: startDay,
+            start_time: startTime,
+            end_day: endDay,
+            end_time: endTime,
+            usage_time: calculationResult.hours,
+            total_price: calculationResult.total_price,
+            final_price: calculationResult.final_price,
+            long_term_discount: calculationResult.long_term_discount,
+            plan_discount: calculationResult.plan_discount,
+            pet: getPetValue(),
+            status: '仮予約',
+            station: stationName,
+            car: carName,
+            role: 'admin'
+          };
+
+          fetch('https://roadcruise-share.com/api/lending/add_form', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeader },
+            body: JSON.stringify(payload)
+          })
+            .then(function (res) {
+              if (!res.ok) throw new Error('予約の送信に失敗しました');
+              return res.json().catch(function () { return {}; });
+            })
+            .then(function (data) {
+              alert('予約リクエストを送信しました');
+              window.location.href = '/reservation-complete?id=' + data.id;
+            })
+            .catch(function (err) {
+              alert(err.message || '予約処理でエラーが発生しました');
+              reserveBtn.disabled = false;
+              reserveBtn.textContent = '予約する';
+              console.error('add_form error:', err);
+            });
         });
-      })();
+      });
     </script>
   </body>
 </html>
+ 

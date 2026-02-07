@@ -1,0 +1,47 @@
+---
+---
+
+<header class="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+  <div class="container mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+    <a href="/" class="text-lg font-bold text-primary">キャンピングカーレンタル</a>
+    <nav class="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+      <a href="/#vehicles" class="hover:text-foreground">車両</a>
+      <a href="/#features" class="hover:text-foreground">特徴</a>
+      <a href="/#how-it-works" class="hover:text-foreground">ご利用の流れ</a>
+      <a href="/#faq" class="hover:text-foreground">よくある質問</a>
+      <span id="header-login-wrap" class="inline-flex items-center gap-3">
+        <a href="/login" class="hover:text-foreground">ログイン</a>
+        <a href="/signup" class="rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2">新規登録</a>
+      </span>
+      <span id="header-logout-wrap" class="hidden inline-flex items-center gap-3">
+        <a href="/mypage" class="hover:text-foreground">マイページ</a>
+        <button type="button" id="header-logout-btn" class="cursor-pointer bg-transparent font-medium text-muted-foreground hover:text-foreground">
+          ログアウト
+        </button>
+      </span>
+    </nav>
+  </div>
+</header>
+
+<script>
+  import { initAuth, logout } from '../lib/auth';
+
+  const loginWrap = document.getElementById('header-login-wrap');
+  const logoutWrap = document.getElementById('header-logout-wrap');
+  const logoutBtn = document.getElementById('header-logout-btn');
+
+  function setAuthUI(loggedIn: boolean) {
+    if (loginWrap) loginWrap.classList.toggle('hidden', loggedIn);
+    if (logoutWrap) logoutWrap.classList.toggle('hidden', !loggedIn);
+  }
+
+  initAuth((user) => {
+    setAuthUI(!!user);
+  });
+
+  logoutBtn?.addEventListener('click', () => {
+    logout().then(() => {
+      window.location.reload();
+    });
+  });
+</script>

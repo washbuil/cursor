@@ -1,0 +1,253 @@
+---
+/** 空車検索結果ページ。FirestoreでcarMapを組み立て、クライアントでAPIと結合するため prerender しない。 */
+export const prerender = false;
+
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+import { getDb } from '../lib/firebase';
+import { getDocs, collection } from 'firebase/firestore';
+
+const PLACEHOLDER_IMAGE = 'https://placehold.co/600x400?text=No+Image';
+
+/** car_id (数値) をキーにしたMap。API結果と結合するため。 */
+let carMap: Record<number, { docId: string; name: string; image: string }> = {};
+
+const db = getDb();
+if (db) {
+  try {
+    const snapshot = await getDocs(collection(db, 'cars'));
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const carId = data.car_id != null ? Number(data.car_id) : null;
+      if (carId == null) return;
+      const mainImage = data.main_image ?? data.car_img;
+      let imageUrl = PLACEHOLDER_IMAGE;
+      if (mainImage != null && String(mainImage).trim() !== '' && !String(mainImage).startsWith('gs://')) {
+        imageUrl = String(mainImage).trim();
+      }
+      carMap[carId] = {
+        docId: docSnap.id,
+        name: data.car_name != null ? String(data.car_name) : '名前なし',
+        image: imageUrl,
+      };
+    });
+  } catch (_err) {
+    carMap = {};
+  }
+}
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="キャンピングカー空車検索結果" />
+    <title>検索結果 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen flex flex-col bg-background text-foreground">
+    <div id="server-data" data-car-map={JSON.stringify(carMap)} data-api-token={import.meta.env.PUBLIC_API_TOKEN ?? ''} class="hidden" aria-hidden="true"></div>
+    <Header />
+
+    <main class="flex-1 pt-8 pb-16">
+      <div class="container mx-auto max-w-6xl px-4">
+        <h1 class="text-2xl font-bold text-foreground md:text-3xl">検索結果</h1>
+
+        <div id="search-loading" class="mt-8 py-12 text-center text-muted-foreground">
+          空き車両を確認中...
+        </div>
+        <div id="search-results" class="mt-8 hidden">
+          <!-- クライアント側でカードを挿入 -->
+        </div>
+        <div id="search-empty" class="mt-8 hidden py-12 text-center text-muted-foreground">
+          条件に合う空き車両が見つかりませんでした
+        </div>
+        <div id="search-error" class="mt-8 hidden py-12 text-center text-destructive">
+          <!-- APIエラー時 -->
+        </div>
+      </div>
+    </main>
+
+    <footer class="mt-auto border-t border-border bg-primary py-8 text-primary-foreground">
+      <div class="container mx-auto max-w-6xl px-4">
+        <div class="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <a href="/" class="text-lg font-bold text-primary-foreground">キャンピングカーレンタル</a>
+          <nav class="flex flex-wrap items-center justify-center gap-6 text-sm text-primary-foreground/90">
+            <a href="/#vehicles" class="hover:text-primary-foreground">車両</a>
+            <a href="/#features" class="hover:text-primary-foreground">特徴</a>
+            <a href="/#how-it-works" class="hover:text-primary-foreground">ご利用の流れ</a>
+            <a href="/#faq" class="hover:text-primary-foreground">よくある質問</a>
+          </nav>
+        </div>
+        <p class="mt-8 text-center text-sm text-primary-foreground/70">© {new Date().getFullYear()} キャンピングカーレンタル. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      const API_EMPTY_SEARCH_URL = 'https://roadcruise-share.com/api/lending/empty_search';
+      const LARAVEL_URL = 'https://roadcruise-share.com';
+
+      const serverDataEl = document.getElementById('server-data');
+      const carMap = (function () {
+        try {
+          const raw = serverDataEl?.dataset?.carMap;
+          return raw ? JSON.parse(raw) : {};
+        } catch (_e) {
+          return {};
+        }
+      })();
+      const apiToken = serverDataEl?.dataset?.apiToken ?? '';
+
+      function getParams() {
+        const params = new URLSearchParams(window.location.search);
+        const start_day = params.get('start_day') ?? '';
+        const end_day = params.get('end_day') ?? '';
+        let endDay = end_day;
+        if (!endDay && start_day) {
+          const d = new Date(start_day + 'T00:00:00');
+          d.setDate(d.getDate() + 1);
+          endDay = d.toISOString().slice(0, 10);
+        }
+        return {
+          prefecture: params.get('prefecture') ?? params.get('prf') ?? '',
+          start_day,
+          start_time: params.get('start_time') ?? '6',
+          end_day: endDay,
+          end_time: params.get('end_time') ?? '18',
+        };
+      }
+
+      function formatPrice(value: unknown): string {
+        const n = value != null ? Number(value) : 0;
+        return '¥' + n.toLocaleString('ja-JP');
+      }
+
+      function buildDetailUrl(docId: string, searchParams: {
+        prefecture: string;
+        start_day: string;
+        end_day: string;
+        start_time?: string;
+        end_time?: string;
+      }): string {
+        const q = new URLSearchParams();
+        if (searchParams.start_day) q.set('start_day', searchParams.start_day);
+        if (searchParams.end_day) q.set('end_day', searchParams.end_day);
+        if (searchParams.prefecture) q.set('prefecture', searchParams.prefecture);
+        if (searchParams.start_time) q.set('start_time', searchParams.start_time);
+        if (searchParams.end_time) q.set('end_time', searchParams.end_time);
+        const query = q.toString();
+        return '/cars/' + docId + (query ? '?' + query : '');
+      }
+
+      function escapeHtml(text: string): string {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      const loadingEl = document.getElementById('search-loading');
+      const resultsEl = document.getElementById('search-results');
+      const emptyEl = document.getElementById('search-empty');
+      const errorEl = document.getElementById('search-error');
+
+      const params = getParams();
+      const prf = params.prefecture.trim() !== '' ? params.prefecture.trim() : '東京都';
+
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+      };
+      const payload = {
+        laravelURL: LARAVEL_URL,
+        prf,
+        start_day: params.start_day || new Date().toISOString().slice(0, 10),
+        start_time: params.start_time,
+        end_day: params.end_day || new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        end_time: params.end_time,
+      };
+
+      console.log('Sending Payload:', payload);
+      fetch(API_EMPTY_SEARCH_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('空車検索に失敗しました');
+          return res.json();
+        })
+        .then((data) => {
+          console.log('API Response:', data);
+          if (loadingEl) loadingEl.classList.add('hidden');
+
+          const details = data.details ?? [];
+          const available = details.filter((d) => d.existence === true);
+
+          if (available.length === 0) {
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+          }
+
+          const map = typeof carMap === 'object' && carMap !== null ? carMap : {};
+          if (resultsEl) {
+            resultsEl.classList.remove('hidden');
+            const grid = document.createElement('div');
+            grid.className = 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3';
+            available.forEach((item) => {
+              const carId = item.car_id;
+              const info = map[carId] || map[String(carId)];
+              const docId = info?.docId ?? String(carId);
+              const name = info?.name ?? '名前なし';
+              const image = info?.image ?? 'https://placehold.co/600x400?text=No+Image';
+              const finalPrice = item.final_price;
+
+              const url = buildDetailUrl(docId, {
+                prefecture: params.prefecture,
+                start_day: params.start_day,
+                end_day: params.end_day,
+                start_time: params.start_time,
+                end_time: params.end_time,
+              });
+              const safeUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              const safeImage = image.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
+              const article = document.createElement('article');
+              article.className =
+                'overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow hover:shadow-md cursor-pointer';
+              article.innerHTML =
+                '<a href="' +
+                safeUrl +
+                '" class="block">' +
+                '<div class="aspect-[3/2] overflow-hidden bg-muted">' +
+                '<img src="' +
+                safeImage +
+                '" alt="" class="h-full w-full object-cover" width="600" height="400" loading="lazy" />' +
+                '</div>' +
+                '<div class="p-5">' +
+                '<h3 class="text-lg font-semibold text-card-foreground">' +
+                escapeHtml(name) +
+                '</h3>' +
+                '<p class="mt-2 text-xl font-bold text-primary">' +
+                formatPrice(finalPrice) +
+                '</p>' +
+                '<span class="mt-4 inline-flex items-center text-sm font-medium text-primary">詳細を見る</span>' +
+                '</div>' +
+                '</a>';
+              grid.appendChild(article);
+            });
+            resultsEl.innerHTML = '';
+            resultsEl.appendChild(grid);
+          }
+        })
+        .catch((err) => {
+          console.error('Fetch Error:', err);
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (emptyEl) emptyEl.classList.add('hidden');
+          if (errorEl) {
+            errorEl.textContent = err.message || '空車検索の取得に失敗しました。しばらく経ってから再度お試しください。';
+            errorEl.classList.remove('hidden');
+          }
+        });
+    </script>
+  </body>
+</html>
