@@ -81,8 +81,14 @@ import Header from '../components/Header.astro';
       </div>
     </footer>
 
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.apiToken = apiToken;
+    </script>
+
     <script>
       import { registerWithEmail } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { doc, updateDoc } from 'firebase/firestore';
 
       const form = document.getElementById('signup-form') as HTMLFormElement;
       const displayNameInput = document.getElementById('signup-display-name') as HTMLInputElement;
@@ -111,7 +117,67 @@ import Header from '../components/Header.astro';
         }
         submitBtn.disabled = true;
         try {
-          await registerWithEmail(email, password, displayName);
+          const user = await registerWithEmail(email, password, displayName);
+          const apiToken = (window as { apiToken?: string }).apiToken ?? '';
+
+          // --- Laravel Sync ---
+          try {
+            const laravelRes = await fetch('https://roadcruise-share.com/api/user/add_user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify({
+                flutter_user_id: user.uid,
+                name: displayName,
+                email: email,
+                password: password
+              })
+            });
+            if (!laravelRes.ok) {
+              console.error('Laravel API Error:', await laravelRes.text());
+            }
+          } catch (laravelErr) {
+            console.error('Laravel Sync Failed:', laravelErr);
+          }
+          // --------------------
+
+          // --- FileMaker Sync ---
+          try {
+            const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json','Accept': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}), },
+              body: JSON.stringify({
+                database: 'webapp',
+                layout_name: 'users',
+                data: {
+                  role: 'guest',
+                  email: email,
+                  display_name: displayName,
+                  userRef: user.uid
+                }
+              })
+            });
+            if (!fmRes.ok) {
+              console.error('FileMaker API Error:', await fmRes.text());
+            }
+          } catch (fmErr) {
+            console.error('FileMaker Sync Failed:', fmErr);
+          }
+          // ----------------------
+
+          // Firestore: users/{uid} に userRef（自分自身への参照）を登録
+          const db = getDb();
+          if (db) {
+            const userDocRef = doc(db, 'users', user.uid);
+            await updateDoc(userDocRef, {
+              userRef: userDocRef
+            });
+          }
+
           alert('登録確認メールを送信しました。\nメール内のリンクをクリックして認証を完了させてからログインしてください。');
           window.location.href = '/login';
         } catch (err: unknown) {

@@ -1,0 +1,191 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="会員情報詳細 - キャンピングカーレンタル" />
+    <title>会員情報詳細 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-3xl px-4 py-12">
+      <div id="loading" class="py-12 text-center text-muted-foreground">
+        読み込み中...
+      </div>
+
+      <div id="content" class="hidden">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="text-2xl font-bold md:text-3xl">会員情報詳細</h1>
+          <a href="/mypage" class="text-sm font-medium text-primary hover:underline">
+            ← マイページに戻る
+          </a>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div class="border-b border-border bg-muted/50 px-6 py-4">
+            <h2 class="font-semibold text-foreground">登録情報</h2>
+          </div>
+          <dl class="divide-y divide-border">
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">会員番号</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-member-code">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">お名前</dt>
+              <dd class="text-foreground sm:col-span-2">
+                <div id="val-name" class="font-medium"></div>
+                <div id="val-kana" class="text-sm text-muted-foreground"></div>
+              </dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">連絡先メールアドレス</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-email">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">電話番号</dt>
+              <dd class="text-foreground sm:col-span-2">
+                <div><span class="inline-block w-10 text-xs text-muted-foreground">携帯:</span> <span id="val-mobile"></span></div>
+                <div><span class="inline-block w-10 text-xs text-muted-foreground">自宅:</span> <span id="val-phone"></span></div>
+              </dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">住所</dt>
+              <dd class="text-foreground sm:col-span-2">
+                <div id="val-postcode" class="text-sm"></div>
+                <div id="val-address" class="mt-1"></div>
+              </dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">お支払い方法</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-payment">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">ペット乗車</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-pet">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">メモ</dt>
+              <dd class="whitespace-pre-wrap text-foreground sm:col-span-2" id="val-memo">—</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="mt-8 text-center">
+          <a href="/mypage" class="rounded-md bg-secondary px-6 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
+            マイページに戻る
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <footer class="mt-auto border-t border-border bg-primary py-8 text-primary-foreground">
+      <div class="container mx-auto max-w-6xl px-4">
+        <div class="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <a href="/" class="text-lg font-bold text-primary-foreground">キャンピングカーレンタル</a>
+          <nav class="flex flex-wrap items-center justify-center gap-6 text-sm text-primary-foreground/90">
+            <a href="/#vehicles" class="hover:text-primary-foreground">車両</a>
+            <a href="/#features" class="hover:text-primary-foreground">特徴</a>
+            <a href="/#how-it-works" class="hover:text-primary-foreground">ご利用の流れ</a>
+            <a href="/#faq" class="hover:text-primary-foreground">よくある質問</a>
+          </nav>
+        </div>
+        <p class="mt-8 text-center text-sm text-primary-foreground/70">© {new Date().getFullYear()} キャンピングカーレンタル. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script>
+      import { initAuth } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { collection, query, where, getDocs } from 'firebase/firestore';
+
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+
+      const elCode = document.getElementById('val-member-code');
+      const elName = document.getElementById('val-name');
+      const elKana = document.getElementById('val-kana');
+      const elEmail = document.getElementById('val-email');
+      const elMobile = document.getElementById('val-mobile');
+      const elPhone = document.getElementById('val-phone');
+      const elPost = document.getElementById('val-postcode');
+      const elAddress = document.getElementById('val-address');
+      const elPayment = document.getElementById('val-payment');
+      const elPet = document.getElementById('val-pet');
+      const elMemo = document.getElementById('val-memo');
+
+      function str(d: Record<string, unknown>, ...keys: string[]): string {
+        for (const k of keys) {
+          const v = d[k];
+          if (v != null && v !== '') return String(v);
+        }
+        return '';
+      }
+
+      initAuth(async (user) => {
+        if (!user) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const db = getDb();
+        if (!db) {
+          if (loadingEl) loadingEl.classList.add('hidden');
+          alert('データベースに接続できません。');
+          return;
+        }
+
+        try {
+          const q = query(collection(db, 'members'), where('user_id', '==', user.uid));
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+            alert('会員情報が見つかりません。まずは会員登録を行ってください。');
+            window.location.href = '/member-register';
+            return;
+          }
+
+          const docData = querySnapshot.docs[0].data() as Record<string, unknown>;
+
+          if (elCode) elCode.textContent = str(docData, 'member_code') || '（未発行）';
+          if (elName) elName.textContent = [str(docData, 'last_name'), str(docData, 'first_name')].filter(Boolean).join(' ') || '—';
+          if (elKana) elKana.textContent = [str(docData, 'last_name_kana'), str(docData, 'first_name_kana')].filter(Boolean).join(' ') || '—';
+          if (elEmail) elEmail.textContent = str(docData, 'mobile_email', 'email') || user.email || '—';
+          if (elMobile) elMobile.textContent = str(docData, 'mobile_phone') || '—';
+          if (elPhone) elPhone.textContent = str(docData, 'home_phone', 'phone_number') || '—';
+
+          const postCode = str(docData, 'post_code', 'postal_code');
+          if (elPost) elPost.textContent = postCode ? `〒${postCode}` : '—';
+          const prefectures = str(docData, 'prefectures', 'prf');
+          const address = str(docData, 'address');
+          const roomNumber = str(docData, 'room_number');
+          if (elAddress) elAddress.textContent = [prefectures, address, roomNumber !== '-' ? roomNumber : ''].filter(Boolean).join(' ') || '—';
+
+          if (elPayment) elPayment.textContent = str(docData, 'payment_method') || '—';
+          if (elPet) elPet.textContent = str(docData, 'pet', 'pet_ride') || '—';
+          if (elMemo) elMemo.textContent = str(docData, 'memo') || 'なし';
+
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (contentEl) contentEl.classList.remove('hidden');
+        } catch (err) {
+          console.error(err);
+          alert('データの取得に失敗しました。');
+          if (loadingEl) loadingEl.classList.add('hidden');
+        }
+      });
+    </script>
+  </body>
+</html>

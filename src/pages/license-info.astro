@@ -1,0 +1,138 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="運転免許証情報 - キャンピングカーレンタル" />
+    <title>運転免許証情報 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-3xl px-4 py-12">
+      <div id="loading" class="py-12 text-center text-muted-foreground">
+        読み込み中...
+      </div>
+
+      <div id="content" class="hidden">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="text-2xl font-bold md:text-3xl">運転免許証情報</h1>
+          <a href="/mypage" class="text-sm font-medium text-primary hover:underline">
+            ← マイページに戻る
+          </a>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div class="border-b border-border bg-muted/50 px-6 py-4">
+            <h2 class="font-semibold text-foreground">登録内容</h2>
+          </div>
+          <dl class="divide-y divide-border">
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">免許証番号</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-number">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">免許証の色</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-color">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">生年月日</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-birthday">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">有効期限</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-expire">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">免許の種類</dt>
+              <dd class="text-foreground sm:col-span-2" id="val-type">—</dd>
+            </div>
+
+            <div class="grid grid-cols-1 gap-1 p-6 sm:grid-cols-3 sm:gap-4">
+              <dt class="font-medium text-muted-foreground">メモ</dt>
+              <dd class="text-foreground sm:col-span-2 whitespace-pre-wrap" id="val-memo">—</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="mt-8 text-center">
+          <a href="/mypage" class="rounded-md bg-secondary px-6 py-2.5 text-sm font-medium text-secondary-foreground hover:bg-secondary/80">
+            マイページに戻る
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      import { initAuth } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { collection, query, where, getDocs } from 'firebase/firestore';
+
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+
+      const elNumber = document.getElementById('val-number');
+      const elColor = document.getElementById('val-color');
+      const elBirthday = document.getElementById('val-birthday');
+      const elExpire = document.getElementById('val-expire');
+      const elType = document.getElementById('val-type');
+      const elMemo = document.getElementById('val-memo');
+
+      function formatDate(ts: unknown): string {
+        if (!ts) return '—';
+        const d = ts && typeof (ts as { toDate?: () => Date }).toDate === 'function'
+          ? (ts as { toDate: () => Date }).toDate()
+          : new Date(ts as string | number | Date);
+        if (isNaN(d.getTime())) return '—';
+        return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+      }
+
+      initAuth(async (user) => {
+        if (!user) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const db = getDb();
+        if (!db) return;
+
+        try {
+          const q = query(collection(db, 'licenses'), where('user_id', '==', user.uid));
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+            alert('免許証情報が見つかりません。まずは登録を行ってください。');
+            window.location.href = '/mypage';
+            return;
+          }
+
+          const docData = querySnapshot.docs[0].data();
+
+          if (elNumber) elNumber.textContent = (docData.license_number as string) || '—';
+          if (elColor) elColor.textContent = (docData.license_color as string) || '—';
+          if (elBirthday) elBirthday.textContent = formatDate(docData.birthday);
+          if (elExpire) elExpire.textContent = formatDate(docData.license_expiration_date);
+          if (elType) elType.textContent = (docData.license_type as string) || '—';
+          if (elMemo) elMemo.textContent = (docData.memo as string) || 'なし';
+
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (contentEl) contentEl.classList.remove('hidden');
+        } catch (err) {
+          console.error(err);
+          alert('データの取得に失敗しました。');
+          window.location.href = '/mypage';
+        }
+      });
+    </script>
+  </body>
+</html>

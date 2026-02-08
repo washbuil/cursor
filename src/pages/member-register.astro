@@ -139,7 +139,7 @@ const PREFECTURES = [
     <script>
       import { initAuth, getCurrentUser } from '../lib/auth';
       import { getDb } from '../lib/firebase';
-      import { doc, updateDoc } from 'firebase/firestore';
+      import { collection, doc, setDoc, updateDoc } from 'firebase/firestore';
 
       const { apiToken } = window.pageData as { apiToken: string };
       const API_MEMBER_ADD = 'https://roadcruise-share.com/api/member/add';
@@ -159,6 +159,31 @@ const PREFECTURES = [
           if (formWrapEl) formWrapEl.classList.remove('hidden');
         });
 
+        // 郵便番号からの住所自動入力
+        const postalCodeInput = document.querySelector<HTMLInputElement>('input[name="postal_code"]');
+        const prfSelect = document.querySelector<HTMLSelectElement>('select[name="prf"]');
+        const addressInput = document.querySelector<HTMLInputElement>('input[name="address"]');
+
+        if (postalCodeInput && prfSelect && addressInput) {
+          postalCodeInput.addEventListener('input', async (e) => {
+            const val = (e.target as HTMLInputElement).value.replace(/-/g, '');
+            if (val.length === 7) {
+              try {
+                const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${val}`);
+                const data = await res.json();
+
+                if (data.status === 200 && data.results && data.results[0]) {
+                  const result = data.results[0];
+                  prfSelect.value = result.address1 ?? '';
+                  addressInput.value = (result.address2 ?? '') + (result.address3 ?? '');
+                }
+              } catch (err) {
+                console.error('郵便番号検索エラー:', err);
+              }
+            }
+          });
+        }
+
         form?.addEventListener('submit', async (e) => {
           e.preventDefault();
           const user = getCurrentUser();
@@ -175,15 +200,14 @@ const PREFECTURES = [
 
           try {
             const fd = new FormData(form);
-            const paymentMethod = fd.get('payment_method') ?? '';
-            const petRide = fd.get('pet_ride') ?? '';
+            const paymentMethod = (fd.get('payment_method') ?? '').toString();
+            const petRide = (fd.get('pet_ride') ?? '').toString();
             const originalMemo = (fd.get('memo') ?? '').toString().trim();
-
             const combinedMemo = originalMemo
               ? `${originalMemo}\n\n【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim()
               : `【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim();
 
-            const payload = {
+            const laravelPayload = {
               flutter_user_id: user.uid,
               last_name: fd.get('last_name'),
               first_name: fd.get('first_name'),
@@ -200,31 +224,82 @@ const PREFECTURES = [
               pet_ride: petRide,
             };
 
-            const res = await fetch(API_MEMBER_ADD, {
+            // --- Step 1: Laravel API ---
+            const laravelRes = await fetch(API_MEMBER_ADD, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
               },
-              body: JSON.stringify(payload),
+              body: JSON.stringify(laravelPayload),
             });
 
-            if (!res.ok) {
-              const errText = await res.text();
+            if (!laravelRes.ok) {
+              const errText = await laravelRes.text();
               throw new Error(errText || '登録に失敗しました');
             }
 
-            const data = await res.json().catch(() => ({}));
-            console.log('Member Add Response:', data);
+            const laravelData = await laravelRes.json().catch(() => ({}));
+            console.log('Laravel Response:', laravelData);
 
+            // --- Step 2: Firestore Save ---
             const db = getDb();
             if (db) {
-              await updateDoc(doc(db, 'users', user.uid), {
-                is_member_registered: true,
-                ...(data.id != null && { member_id: data.id }),
+              const membersRef = collection(db, 'members');
+              const newMemberDocRef = doc(membersRef);
+
+              await setDoc(newMemberDocRef, {
+                ...laravelData,
                 payment_method: paymentMethod,
                 pet_ride: petRide,
+                user_id: user.uid,
+                created_at: new Date(),
               });
+
+              await updateDoc(doc(db, 'users', user.uid), {
+                role: 'member',
+                is_member_registered: true,
+                memberRef: newMemberDocRef,
+              });
+            }
+
+            // --- Step 3: FileMaker Sync ---
+            try {
+              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+                },
+                body: JSON.stringify({
+                  database: 'webapp',
+                  layout_name: 'members',
+                  data: {
+                    userRef: user.uid,
+                    member_code: laravelData.member_code ?? '',
+                    last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
+                    first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
+                    last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
+                    first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
+                    mobile_email: user.email ?? '',
+                    mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
+                    home_phone: (laravelData.phone_number ?? fd.get('phone_number') ?? '').toString() || '-',
+                    post_code: laravelData.postal_code ?? fd.get('postal_code') ?? '',
+                    prefectures: laravelData.prf ?? fd.get('prf') ?? '',
+                    address: laravelData.address ?? fd.get('address') ?? '',
+                    room_number: (laravelData.room_number ?? fd.get('room_number') ?? '').toString() || '-',
+                    payment_method: paymentMethod,
+                    pet: petRide,
+                    memo: (fd.get('memo') ?? '').toString() || '',
+                  },
+                }),
+              });
+              if (!fmRes.ok) {
+                console.error('FileMaker API Error:', await fmRes.text());
+              }
+            } catch (fmErr) {
+              console.error('FileMaker Sync Failed:', fmErr);
             }
 
             alert('会員登録が完了しました。');

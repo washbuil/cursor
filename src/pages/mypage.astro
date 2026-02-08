@@ -25,7 +25,10 @@ import Header from '../components/Header.astro';
           <h1 class="text-2xl font-bold text-foreground md:text-3xl">マイページ</h1>
 
           <section class="mt-8 rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-foreground">会員情報</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-lg font-semibold text-foreground">会員情報</h2>
+              <span id="mypage-member-badge" class="hidden inline-flex rounded-full bg-green-100 px-3 py-0.5 text-sm font-medium text-green-800">本会員（登録済）</span>
+            </div>
             <dl class="mt-4 space-y-4">
               <div>
                 <dt class="text-sm text-muted-foreground">ニックネーム</dt>
@@ -47,6 +50,30 @@ import Header from '../components/Header.astro';
               </div>
             </dl>
 
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="/member-info"
+                id="btn-view-member-info"
+                class="hidden inline-flex items-center justify-center rounded-md border border-input bg-white px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              >
+                会員情報を確認する
+              </a>
+              <a
+                href="/license-info"
+                id="btn-view-license"
+                class="hidden inline-flex items-center justify-center rounded-md border border-input bg-white px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              >
+                運転免許証を確認する
+              </a>
+              <a
+                href="/license-register"
+                id="btn-register-license"
+                class="hidden inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+              >
+                運転免許証を登録する
+              </a>
+            </div>
+
             <div class="mt-8 border-t border-border pt-6">
               <button
                 type="button"
@@ -57,6 +84,18 @@ import Header from '../components/Header.astro';
               </button>
             </div>
           </section>
+
+          <div id="mypage-member-alert" class="mt-8 hidden rounded-xl border border-orange-200 bg-orange-50 p-6 text-center">
+            <h3 class="text-lg font-bold text-orange-800">会員情報が未登録です</h3>
+            <p class="mt-2 text-sm text-orange-700">
+              車両の予約を行うには、本会員登録が必要です。
+            </p>
+            <div class="mt-4">
+              <a href="/member-register" class="inline-flex items-center justify-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                会員情報を登録する
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -87,7 +126,33 @@ import Header from '../components/Header.astro';
       const emailEl = document.getElementById('mypage-email');
       const planEl = document.getElementById('mypage-plan');
       const roleEl = document.getElementById('mypage-role');
+      const memberBadgeEl = document.getElementById('mypage-member-badge');
+      const memberAlertEl = document.getElementById('mypage-member-alert');
+      const btnViewMemberInfo = document.getElementById('btn-view-member-info');
+      const btnViewLicense = document.getElementById('btn-view-license');
+      const btnRegisterLicense = document.getElementById('btn-register-license');
       const logoutBtn = document.getElementById('mypage-logout-btn');
+
+      function setMemberStatus(isRegistered: boolean, hasLicense?: boolean) {
+        if (isRegistered) {
+          memberBadgeEl?.classList.remove('hidden');
+          memberAlertEl?.classList.add('hidden');
+          btnViewMemberInfo?.classList.remove('hidden');
+          if (hasLicense) {
+            btnViewLicense?.classList.remove('hidden');
+            btnRegisterLicense?.classList.add('hidden');
+          } else {
+            btnViewLicense?.classList.add('hidden');
+            btnRegisterLicense?.classList.remove('hidden');
+          }
+        } else {
+          memberBadgeEl?.classList.add('hidden');
+          memberAlertEl?.classList.remove('hidden');
+          btnViewMemberInfo?.classList.add('hidden');
+          btnViewLicense?.classList.add('hidden');
+          btnRegisterLicense?.classList.add('hidden');
+        }
+      }
 
       function showContent(user: { uid: string; email?: string | null }) {
         if (loadingEl) loadingEl.classList.add('hidden');
@@ -98,6 +163,7 @@ import Header from '../components/Header.astro';
           if (emailEl) emailEl.textContent = user.email ?? '—';
           if (planEl) planEl.textContent = '—';
           if (roleEl) roleEl.textContent = '—';
+          setMemberStatus(false);
           return;
         }
         getDoc(doc(db, 'users', user.uid))
@@ -107,9 +173,13 @@ import Header from '../components/Header.astro';
             if (emailEl) emailEl.textContent = data.email ?? user.email ?? '—';
             if (planEl) planEl.textContent = data.plan ?? '—';
             if (roleEl) roleEl.textContent = data.role ?? '—';
+            const isMemberRegistered = data.is_member_registered === true;
+            const hasLicense = !!data.licenseRef;
+            setMemberStatus(isMemberRegistered, hasLicense);
           })
           .catch(() => {
             if (emailEl) emailEl.textContent = user.email ?? '—';
+            setMemberStatus(false);
           });
       }
 

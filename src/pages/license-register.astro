@@ -1,0 +1,252 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+
+const currentYear = new Date().getFullYear();
+const birthYears = Array.from({ length: 80 }, (_, i) => currentYear - 18 - i);
+const expireYears = Array.from({ length: 15 }, (_, i) => currentYear + i);
+const months = Array.from({ length: 12 }, (_, i) => i + 1);
+const days = Array.from({ length: 31 }, (_, i) => i + 1);
+
+const LICENSE_COLORS = ['グリーン', 'ブルー', 'ゴールド'];
+const LICENSE_TYPES = ['普通', '普通AT限定', '準中型', '準中型AT限定', '中型', '中型AT限定', '大型', '大型AT限定'];
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="運転免許証登録 - キャンピングカーレンタル" />
+    <title>運転免許証登録 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-2xl px-4 py-12">
+      <div id="loading" class="py-12 text-center text-muted-foreground">読み込み中...</div>
+
+      <div id="content" class="hidden">
+        <h1 class="mb-6 text-2xl font-bold">運転免許証登録</h1>
+        <p class="mb-8 text-sm text-muted-foreground">
+          キャンピングカーをご利用する場合は運転免許証の登録が必要です。<br />
+          免許証の内容を入力してください。
+        </p>
+
+        <form id="license-form" class="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">生年月日</label>
+            <div class="flex gap-2">
+              <select name="birth_year" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">年</option>
+                {birthYears.map((y) => (
+                  <option value={y}>{y}</option>
+                ))}
+              </select>
+              <select name="birth_month" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">月</option>
+                {months.map((m) => (
+                  <option value={m}>{m}</option>
+                ))}
+              </select>
+              <select name="birth_day" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">日</option>
+                {days.map((d) => (
+                  <option value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">免許証番号</label>
+            <input type="text" name="license_number" placeholder="123456789000" required maxlength="12" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">免許証の色</label>
+            <select name="license_color" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+              <option value="">選択してください</option>
+              {LICENSE_COLORS.map((c) => (
+                <option value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">有効期限</label>
+            <div class="flex gap-2">
+              <select name="expire_year" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">年</option>
+                {expireYears.map((y) => (
+                  <option value={y}>{y}</option>
+                ))}
+              </select>
+              <select name="expire_month" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">月</option>
+                {months.map((m) => (
+                  <option value={m}>{m}</option>
+                ))}
+              </select>
+              <select name="expire_day" required class="w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">日</option>
+                {days.map((d) => (
+                  <option value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">免許の種類</label>
+            <select name="license_type" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+              <option value="">選択してください</option>
+              {LICENSE_TYPES.map((t) => (
+                <option value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">メモ</label>
+            <textarea name="memo" rows="3" class="flex w-full rounded-md border border-input bg-background px-3 py-2" placeholder="任意"></textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">免許証画像</label>
+            <input type="file" name="license_image" accept="image/*" class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-4 file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground file:hover:opacity-90" />
+            <p class="text-xs text-muted-foreground">※ 画像のアップロード機能は準備中です。入力内容のみ登録されます。</p>
+          </div>
+
+          <button type="submit" id="submit-btn" class="w-full rounded-md bg-primary py-3 text-base font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
+            登録する
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.pageData = { apiToken };
+    </script>
+
+    <script>
+      import { initAuth, getCurrentUser } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { collection, doc, addDoc, updateDoc } from 'firebase/firestore';
+
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+      const form = document.getElementById('license-form') as HTMLFormElement | null;
+      const submitBtn = document.getElementById('submit-btn');
+
+      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
+      const apiToken = pageData?.apiToken ?? '';
+
+      /** FileMaker用日付形式 M/D/YYYY 00:00:00 */
+      function formatDateForFM(year: number, month: number, day: number): string {
+        return `${month}/${day}/${year} 00:00:00`;
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initAuth((user) => {
+          if (!user) {
+            window.location.href = '/login';
+            return;
+          }
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (contentEl) contentEl.classList.remove('hidden');
+        });
+
+        form?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const user = getCurrentUser();
+          if (!user || !submitBtn) return;
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = '送信中...';
+
+          try {
+            const fd = new FormData(form);
+            const db = getDb();
+            if (!db) throw new Error('Firestore not initialized');
+
+            const now = new Date();
+            const createdAtStr = formatDateForFM(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+            const birthY = Number(fd.get('birth_year'));
+            const birthM = Number(fd.get('birth_month'));
+            const birthD = Number(fd.get('birth_day'));
+            const expireY = Number(fd.get('expire_year'));
+            const expireM = Number(fd.get('expire_month'));
+            const expireD = Number(fd.get('expire_day'));
+
+            const birthdayStr = formatDateForFM(birthY, birthM, birthD);
+            const expireStr = formatDateForFM(expireY, expireM, expireD);
+
+            const licenseData = {
+              user_id: user.uid,
+              license_number: fd.get('license_number') ?? '',
+              birthday: new Date(birthY, birthM - 1, birthD),
+              license_color: fd.get('license_color') ?? '',
+              license_expiration_date: new Date(expireY, expireM - 1, expireD),
+              license_type: fd.get('license_type') ?? '',
+              memo: (fd.get('memo') ?? '').toString().trim(),
+              created_at: now,
+            };
+
+            const licensesRef = collection(db, 'licenses');
+            const newLicenseDocRef = await addDoc(licensesRef, licenseData);
+
+            await updateDoc(doc(db, 'users', user.uid), {
+              licenseRef: newLicenseDocRef,
+            });
+
+            await updateDoc(newLicenseDocRef, {
+              licenseRef: newLicenseDocRef,
+            });
+
+            try {
+              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+                },
+                body: JSON.stringify({
+                  database: 'webapp',
+                  layout_name: 'licenses',
+                  data: {
+                    license_number: fd.get('license_number'),
+                    birthday: birthdayStr,
+                    created_at: createdAtStr,
+                    licenseRef: newLicenseDocRef.id,
+                    license_color: fd.get('license_color'),
+                    license_expiration_date: expireStr,
+                    license_type: fd.get('license_type'),
+                    userRef: user.uid,
+                  },
+                }),
+              });
+              if (!fmRes.ok) {
+                console.error('FileMaker Sync Error:', await fmRes.text());
+              }
+            } catch (fmErr) {
+              console.error('FileMaker Sync Failed:', fmErr);
+            }
+
+            alert('免許証情報の登録が完了しました。');
+            window.location.href = '/mypage';
+          } catch (err) {
+            console.error(err);
+            alert('登録に失敗しました。');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = '登録する';
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
