@@ -63,6 +63,51 @@ import Header from '../components/Header.astro';
               <dd class="text-foreground sm:col-span-2 whitespace-pre-wrap" id="val-memo">—</dd>
             </div>
           </dl>
+
+          <div class="border-t border-border bg-muted/50 px-6 py-4">
+            <h2 class="font-semibold text-foreground">登録画像</h2>
+          </div>
+          <div class="grid grid-cols-1 gap-6 p-6 sm:grid-cols-2">
+            <div class="space-y-2">
+              <div class="text-sm font-medium text-muted-foreground">免許証（表面）</div>
+              <div id="wrap-img-front" class="hidden">
+                <a id="link-img-front" href="#" target="_blank" rel="noopener noreferrer" class="block transition-opacity hover:opacity-90">
+                  <img id="img-front" src="" alt="免許証（表面）" class="h-48 w-full rounded-lg border border-border object-contain bg-muted/20" />
+                </a>
+              </div>
+              <p id="no-img-front" class="text-sm text-foreground">—</p>
+            </div>
+
+            <div class="space-y-2">
+              <div class="text-sm font-medium text-muted-foreground">免許証（裏面）</div>
+              <div id="wrap-img-back" class="hidden">
+                <a id="link-img-back" href="#" target="_blank" rel="noopener noreferrer" class="block transition-opacity hover:opacity-90">
+                  <img id="img-back" src="" alt="免許証（裏面）" class="h-48 w-full rounded-lg border border-border object-contain bg-muted/20" />
+                </a>
+              </div>
+              <p id="no-img-back" class="text-sm text-foreground">—</p>
+            </div>
+
+            <div class="space-y-2">
+              <div class="text-sm font-medium text-muted-foreground">住所確認書類</div>
+              <div id="wrap-img-address" class="hidden">
+                <a id="link-img-address" href="#" target="_blank" rel="noopener noreferrer" class="block transition-opacity hover:opacity-90">
+                  <img id="img-address" src="" alt="住所確認書類" class="h-48 w-full rounded-lg border border-border object-contain bg-muted/20" />
+                </a>
+              </div>
+              <p id="no-img-address" class="text-sm text-foreground">—</p>
+            </div>
+
+            <div class="space-y-2">
+              <div class="text-sm font-medium text-muted-foreground">本人確認書類</div>
+              <div id="wrap-img-id" class="hidden">
+                <a id="link-img-id" href="#" target="_blank" rel="noopener noreferrer" class="block transition-opacity hover:opacity-90">
+                  <img id="img-id" src="" alt="本人確認書類" class="h-48 w-full rounded-lg border border-border object-contain bg-muted/20" />
+                </a>
+              </div>
+              <p id="no-img-id" class="text-sm text-foreground">—</p>
+            </div>
+          </div>
         </div>
 
         <div class="mt-8 text-center">
@@ -97,6 +142,29 @@ import Header from '../components/Header.astro';
         return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
       }
 
+      function setupImage(
+        url: string | undefined,
+        wrapId: string,
+        imgId: string,
+        linkId: string,
+        noImgId: string
+      ): void {
+        const wrapEl = document.getElementById(wrapId);
+        const imgEl = document.getElementById(imgId) as HTMLImageElement | null;
+        const linkEl = document.getElementById(linkId) as HTMLAnchorElement | null;
+        const noImgEl = document.getElementById(noImgId);
+        const hasUrl = !!url && url.trim() !== '';
+        if (hasUrl) {
+          if (imgEl) imgEl.src = url!;
+          if (linkEl) linkEl.href = url!;
+          if (wrapEl) wrapEl.classList.remove('hidden');
+          if (noImgEl) noImgEl.classList.add('hidden');
+        } else {
+          if (wrapEl) wrapEl.classList.add('hidden');
+          if (noImgEl) noImgEl.classList.remove('hidden');
+        }
+      }
+
       initAuth(async (user) => {
         if (!user) {
           window.location.href = '/login';
@@ -124,6 +192,11 @@ import Header from '../components/Header.astro';
           if (elExpire) elExpire.textContent = formatDate(docData.license_expiration_date);
           if (elType) elType.textContent = (docData.license_type as string) || '—';
           if (elMemo) elMemo.textContent = (docData.memo as string) || 'なし';
+
+          setupImage(docData.license_front_image as string | undefined, 'wrap-img-front', 'img-front', 'link-img-front', 'no-img-front');
+          setupImage(docData.license_back_image as string | undefined, 'wrap-img-back', 'img-back', 'link-img-back', 'no-img-back');
+          setupImage(docData.address_verification_image as string | undefined, 'wrap-img-address', 'img-address', 'link-img-address', 'no-img-address');
+          setupImage(docData.identification_image as string | undefined, 'wrap-img-id', 'img-id', 'link-img-id', 'no-img-id');
 
           if (loadingEl) loadingEl.classList.add('hidden');
           if (contentEl) contentEl.classList.remove('hidden');

@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -12,6 +13,7 @@ const firebaseConfig = {
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
 /**
  * Firebase アプリを初期化し、設定済みの場合にのみインスタンスを返す。
@@ -40,6 +42,22 @@ export function getDb(): Firestore | null {
     if (!firebaseApp) return null;
     db = getFirestore(firebaseApp);
     return db;
+  } catch (_err) {
+    return null;
+  }
+}
+
+/**
+ * Firebase Storage インスタンスを取得する。
+ * アプリ未初期化時は null を返す。
+ */
+export function getFirebaseStorage(): FirebaseStorage | null {
+  if (storage) return storage;
+  try {
+    const firebaseApp = getFirebaseApp();
+    if (!firebaseApp) return null;
+    storage = getStorage(firebaseApp);
+    return storage;
   } catch (_err) {
     return null;
   }
