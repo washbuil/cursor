@@ -144,6 +144,12 @@ import Header from '../components/Header.astro';
             })
           );
 
+          bookings.sort((a, b) => {
+            const dateA = new Date(String(a.start)).getTime();
+            const dateB = new Date(String(b.start)).getTime();
+            return dateB - dateA; // B - A で降順
+          });
+
           const html = bookings
             .map((b) => {
               const imgHtml = b.carImage
