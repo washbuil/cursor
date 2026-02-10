@@ -50,7 +50,13 @@ import Header from '../components/Header.astro';
               </div>
             </dl>
 
-            <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div class="mt-6 flex flex-col gap-3 sm:flex-row flex-wrap">
+              <a
+                href="/booking-list"
+                class="inline-flex items-center justify-center rounded-md border border-input bg-white px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              >
+                予約履歴を確認する
+              </a>
               <a
                 href="/member-info"
                 id="btn-view-member-info"

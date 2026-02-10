@@ -134,6 +134,7 @@ const PREFECTURES = [
       const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
       const apiToken = pageData?.apiToken ?? '';
       let memberDocId = '';
+      let currentMemberCode = '';
 
       const postalCodeInput = document.querySelector('input[name="postal_code"]');
       const prfSelect = document.querySelector('select[name="prf"]');
@@ -180,6 +181,7 @@ const PREFECTURES = [
           const docSnapshot = querySnapshot.docs[0];
           memberDocId = docSnapshot.id;
           const data = docSnapshot.data();
+          currentMemberCode = (data.member_code as string) ?? '';
 
           if (!form) return;
 
@@ -244,6 +246,80 @@ const PREFECTURES = [
           };
 
           await updateDoc(doc(db, 'members', memberDocId), updateData);
+
+          if (currentMemberCode) {
+            try {
+              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/update', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+                },
+                body: JSON.stringify({
+                  database: 'webapp',
+                  layout_name: 'members',
+                  query_key: 'member_code',
+                  query_value: currentMemberCode,
+                  data: {
+                    last_name: fd.get('last_name'),
+                    first_name: fd.get('first_name'),
+                    last_name_kana: fd.get('last_name_kana'),
+                    first_name_kana: fd.get('first_name_kana'),
+                    mobile_phone: fd.get('mobile_phone'),
+                    home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
+                    post_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                    prefectures: fd.get('prf'),
+                    address: fd.get('address'),
+                    room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
+                    payment_method: fd.get('payment_method'),
+                    pet: fd.get('pet_ride'),
+                    memo: (fd.get('memo') ?? '').toString().trim() || '-',
+                  },
+                }),
+              });
+              if (!fmRes.ok) {
+                console.error('FileMaker Update Error:', await fmRes.text());
+              }
+            } catch (fmErr) {
+              console.error('FileMaker Sync Failed:', fmErr);
+            }
+          }
+
+          if (currentMemberCode) {
+            try {
+              const user = getCurrentUser();
+              const laravelRes = await fetch('https://roadcruise-share.com/api/members/update-by-code', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+                },
+                body: JSON.stringify({
+                  member_code: currentMemberCode,
+                  last_name: fd.get('last_name'),
+                  first_name: fd.get('first_name'),
+                  last_name_kana: fd.get('last_name_kana'),
+                  first_name_kana: fd.get('first_name_kana'),
+                  mobile_phone: fd.get('mobile_phone'),
+                  phone_number: fd.get('phone_number'),
+                  postal_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                  prf: fd.get('prf'),
+                  address: fd.get('address'),
+                  room_number: fd.get('room_number'),
+                  memo: fd.get('memo'),
+                  ...(user?.email ? { email: user.email } : {}),
+                }),
+              });
+              if (!laravelRes.ok) {
+                console.error('Laravel Update Error:', await laravelRes.text());
+              } else {
+                console.log('Laravel Update Success');
+              }
+            } catch (laravelErr) {
+              console.error('Laravel Sync Failed:', laravelErr);
+            }
+          }
 
           alert('会員情報を更新しました。');
           window.location.href = '/member-info';

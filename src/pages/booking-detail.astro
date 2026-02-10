@@ -1,0 +1,223 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="予約詳細 - キャンピングカーレンタル" />
+    <title>予約詳細 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-2xl px-4 py-12">
+      <div id="loading" class="py-12 text-center text-muted-foreground">読み込み中...</div>
+
+      <div id="content" class="hidden">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="text-2xl font-bold md:text-3xl">予約詳細</h1>
+          <a href="/booking-list" class="text-sm font-medium text-primary hover:underline">← 一覧に戻る</a>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div class="relative h-48 w-full bg-muted">
+            <img id="car-image" class="h-full w-full object-cover hidden" alt="" />
+            <div id="no-image" class="flex h-full w-full items-center justify-center text-muted-foreground">No Image</div>
+          </div>
+
+          <div class="p-6">
+            <div class="flex items-start justify-between gap-2">
+              <h2 id="car-name" class="text-xl font-bold">読み込み中...</h2>
+              <span id="status-badge" class="shrink-0 inline-flex rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800">—</span>
+            </div>
+
+            <div class="mt-6 space-y-6">
+              <div>
+                <h3 class="text-sm font-medium text-muted-foreground mb-2">ご利用期間</h3>
+                <div class="flex items-center gap-2 text-foreground font-medium flex-wrap">
+                  <span id="start-date">—</span>
+                  <span class="text-muted-foreground">→</span>
+                  <span id="end-date">—</span>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="text-sm font-medium text-muted-foreground mb-2">お支払い金額</h3>
+                <div class="rounded-md bg-muted/50 p-4">
+                  <div class="flex justify-between items-center text-lg font-bold">
+                    <span>合計</span>
+                    <span id="total-price" class="text-primary">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <dl class="divide-y divide-border border-t border-border mt-4">
+                <div class="py-3 flex justify-between">
+                  <dt class="text-sm text-muted-foreground">予約ID</dt>
+                  <dd id="booking-id" class="text-sm font-mono break-all">—</dd>
+                </div>
+                <div class="py-3 flex justify-between">
+                  <dt class="text-sm text-muted-foreground">申込日</dt>
+                  <dd id="created-at" class="text-sm">—</dd>
+                </div>
+                <div class="py-3">
+                  <dt class="text-sm text-muted-foreground mb-1">オプション</dt>
+                  <dd id="options-list" class="text-sm text-foreground whitespace-pre-wrap">なし</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.pageData = { apiToken };
+    </script>
+
+    <script>
+      import { initAuth } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { doc, getDoc } from 'firebase/firestore';
+
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+
+      const carNameEl = document.getElementById('car-name');
+      const carImgEl = document.getElementById('car-image') as HTMLImageElement | null;
+      const noImgEl = document.getElementById('no-image');
+      const statusBadgeEl = document.getElementById('status-badge');
+      const startEl = document.getElementById('start-date');
+      const endEl = document.getElementById('end-date');
+      const priceEl = document.getElementById('total-price');
+      const bookingIdEl = document.getElementById('booking-id');
+      const createdEl = document.getElementById('created-at');
+      const optionsEl = document.getElementById('options-list');
+
+      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
+      const apiToken = pageData?.apiToken ?? '';
+
+      function formatDate(ts: unknown): string {
+        if (!ts) return '—';
+        const d =
+          ts && typeof (ts as { toDate?: () => Date }).toDate === 'function'
+            ? (ts as { toDate: () => Date }).toDate()
+            : new Date(ts as string | number);
+        if (isNaN(d.getTime())) return '—';
+        return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+
+      function formatPrice(price: number): string {
+        return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(price);
+      }
+
+      function getStatusBadgeClass(status: string): string {
+        if (status === 'キャンセル' || status === 'cancelled' || status === '終了') {
+          return 'shrink-0 inline-flex rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800';
+        }
+        return 'shrink-0 inline-flex rounded-full px-3 py-1 text-xs font-medium bg-green-100 text-green-800';
+      }
+
+      initAuth(async (user) => {
+        if (!user) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const bookingId = params.get('id');
+
+        if (!bookingId) {
+          alert('予約IDが指定されていません。');
+          window.location.href = '/booking-list';
+          return;
+        }
+
+        try {
+          const res = await fetch('https://roadcruise-share.com/api/info_lending/lendingData', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+            },
+            body: JSON.stringify({
+              lending_id: bookingId,
+              user_id: user.uid,
+              role: 'member',
+              laravelURL: 'https://roadcruise-share.com',
+            }),
+          });
+
+          if (!res.ok) {
+            const msg = await res.text();
+            if (res.status === 403 || res.status === 404) {
+              alert('予約が見つからないか、権限がありません。');
+            } else {
+              alert(msg || '予約詳細の取得に失敗しました。');
+            }
+            window.location.href = '/booking-list';
+            return;
+          }
+
+          const bData = await res.json();
+
+          let carImage = '';
+          const db = getDb();
+          const carId = bData.car_id;
+          if (db && carId) {
+            try {
+              const cSnap = await getDoc(doc(db, 'cars', String(carId)));
+              if (cSnap.exists()) {
+                const cData = cSnap.data();
+                carImage = (cData.images?.[0] ?? cData.main_image ?? cData.car_img ?? '') as string;
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
+
+          const carName = (bData.car ?? '不明な車両') as string;
+          if (carNameEl) carNameEl.textContent = carName;
+          if (carImage && carImgEl) {
+            carImgEl.src = carImage;
+            carImgEl.alt = carName;
+            carImgEl.classList.remove('hidden');
+            noImgEl?.classList.add('hidden');
+          }
+
+          if (startEl) startEl.textContent = formatDate(bData.start);
+          if (endEl) endEl.textContent = formatDate(bData.end);
+          if (priceEl) priceEl.textContent = formatPrice(Number(bData.total_price) || 0);
+          if (bookingIdEl) bookingIdEl.textContent = (bData.lending_id ?? bData.id ?? bookingId) as string;
+          if (createdEl) createdEl.textContent = formatDate(bData.created_at);
+
+          if (optionsEl) {
+            const opts = bData.options;
+            optionsEl.textContent =
+              Array.isArray(opts) && opts.length > 0
+                ? opts.map((o: unknown) => (typeof o === 'object' && o && 'name' in o ? (o as { name: string }).name : String(o))).join(', ')
+                : 'なし';
+          }
+
+          if (statusBadgeEl) {
+            const status = (bData.status ?? '') as string;
+            statusBadgeEl.textContent = status || '予約中';
+            statusBadgeEl.className = getStatusBadgeClass(status);
+          }
+
+          loadingEl?.classList.add('hidden');
+          contentEl?.classList.remove('hidden');
+        } catch (err) {
+          console.error(err);
+          alert('データの読み込みに失敗しました。');
+          window.location.href = '/booking-list';
+        }
+      });
+    </script>
+  </body>
+</html>

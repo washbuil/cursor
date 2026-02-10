@@ -1,0 +1,187 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+import Header from '../components/Header.astro';
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="予約履歴 - キャンピングカーレンタル" />
+    <title>予約履歴 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <Header />
+
+    <main class="container mx-auto max-w-3xl px-4 py-12">
+      <div id="loading" class="py-12 text-center text-muted-foreground">読み込み中...</div>
+
+      <div id="content" class="hidden">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="text-2xl font-bold md:text-3xl">予約履歴</h1>
+          <a href="/mypage" class="text-sm font-medium text-primary hover:underline">← マイページ</a>
+        </div>
+
+        <div id="booking-list" class="space-y-4"></div>
+
+        <p id="no-data" class="hidden py-8 text-center text-muted-foreground">予約履歴はありません。</p>
+      </div>
+    </main>
+
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.pageData = { apiToken };
+    </script>
+
+    <script>
+      import { initAuth } from '../lib/auth';
+      import { getDb } from '../lib/firebase';
+      import { doc, getDoc } from 'firebase/firestore';
+
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+      const listEl = document.getElementById('booking-list');
+      const noDataEl = document.getElementById('no-data');
+
+      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
+      const apiToken = pageData?.apiToken ?? '';
+
+      function formatDate(ts: unknown): string {
+        if (ts == null || ts === '') return '';
+        const d =
+          ts && typeof (ts as { toDate?: () => Date }).toDate === 'function'
+            ? (ts as { toDate: () => Date }).toDate()
+            : new Date(ts as string | number);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+
+      function formatPrice(price: number): string {
+        return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(price);
+      }
+
+      function escapeHtml(str: string): string {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function getStatusBadgeClass(status: string): string {
+        if (status === 'キャンセル' || status === 'cancelled' || status === '終了') {
+          return 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800';
+        }
+        return 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800';
+      }
+
+      initAuth(async (user) => {
+        if (!user) {
+          window.location.href = '/login';
+          return;
+        }
+
+        const db = getDb();
+
+        try {
+          const res = await fetch('https://roadcruise-share.com/api/lending/get_reservation_by_id', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+            },
+            body: JSON.stringify({
+              flutter_user_id: user.uid,
+              role: 'member',
+              start_day: '2020-01-01',
+              end_day: '2030-12-31',
+              owner_code: '0',
+              car_ids: '',
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error('予約履歴の取得に失敗しました。');
+          }
+
+          const raw = await res.json();
+          const list = Array.isArray(raw) ? raw : (raw?.data != null && Array.isArray(raw.data) ? raw.data : []);
+
+          if (list.length === 0) {
+            loadingEl?.classList.add('hidden');
+            contentEl?.classList.remove('hidden');
+            noDataEl?.classList.remove('hidden');
+            return;
+          }
+
+          const bookings = await Promise.all(
+            list.map(async (b: Record<string, unknown>) => {
+              const id = (b.id ?? b.lending_id ?? '') as string;
+              const carName = (b.car ?? '不明な車両') as string;
+              let carImage = '';
+              const carId = b.car_id;
+
+              if (db && carId) {
+                try {
+                  const carSnap = await getDoc(doc(db, 'cars', String(carId)));
+                  if (carSnap.exists()) {
+                    const cData = carSnap.data();
+                    carImage = (cData.images?.[0] ?? cData.main_image ?? cData.car_img ?? '') as string;
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+              }
+
+              return {
+                id,
+                carName,
+                carImage,
+                start: b.start,
+                end: b.end,
+                total_price: b.total_price,
+                status: (b.status ?? '') as string,
+              };
+            })
+          );
+
+          const html = bookings
+            .map((b) => {
+              const imgHtml = b.carImage
+                ? `<img src="${escapeHtml(b.carImage)}" alt="${escapeHtml(b.carName)}" class="h-full w-full object-cover" />`
+                : '<div class="flex h-full w-full items-center justify-center text-muted-foreground text-sm">No Image</div>';
+              const statusText = b.status || '予約中';
+              const statusClass = getStatusBadgeClass(b.status);
+              const statusHtml = `<span class="${statusClass}">${escapeHtml(statusText)}</span>`;
+              const startStr = formatDate(b.start);
+              const endStr = formatDate(b.end);
+              const totalAmount = typeof b.total_price === 'number' ? b.total_price : Number(b.total_price) || 0;
+              return `<a href="/booking-detail?id=${escapeHtml(b.id)}" class="flex flex-col sm:flex-row gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50">
+  <div class="h-40 w-full sm:w-48 shrink-0 overflow-hidden rounded-md bg-muted">
+    ${imgHtml}
+  </div>
+  <div class="flex flex-1 flex-col justify-between space-y-2">
+    <div>
+      <div class="flex justify-between items-start gap-2">
+        <h3 class="font-bold text-lg text-foreground line-clamp-1">${escapeHtml(b.carName)}</h3>
+        ${statusHtml}
+      </div>
+      <p class="text-sm text-muted-foreground mt-1">${escapeHtml(startStr)} 〜 ${escapeHtml(endStr)}</p>
+    </div>
+    <div class="text-right font-bold text-primary text-lg">${escapeHtml(formatPrice(totalAmount))}</div>
+  </div>
+</a>`;
+            })
+            .join('');
+
+          if (listEl) listEl.innerHTML = html;
+
+          loadingEl?.classList.add('hidden');
+          contentEl?.classList.remove('hidden');
+        } catch (err) {
+          console.error(err);
+          alert('予約履歴の取得に失敗しました。');
+        }
+      });
+    </script>
+  </body>
+</html>

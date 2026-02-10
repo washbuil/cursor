@@ -415,8 +415,8 @@ function formatPrice(value: number): string {
               start_time: startTime,
               end_day: endDay,
               end_time: endTime,
-              pet: getPetValue(),
-              plan: ''
+              pet: getPetValue() || 'なし',
+              plan: '通常'
             })
           })
             .then(function (res) {
