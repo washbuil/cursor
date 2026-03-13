@@ -18,6 +18,7 @@ const PREFECTURES = [
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="会員情報編集 - キャンピングカーレンタル" />
     <title>会員情報編集 | キャンピングカーレンタル</title>
@@ -142,10 +143,27 @@ const PREFECTURES = [
 
       if (postalCodeInput && prfSelect && addressInput) {
         postalCodeInput.addEventListener('input', async (e) => {
-          const val = (e.target as HTMLInputElement).value.replace(/-/g, '');
-          if (val.length === 7) {
+          const target = e.target as HTMLInputElement;
+
+          // 1. 全角数字を半角数字に変換
+          let val = target.value.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+          // 2. あらゆる種類のハイフンや長音符、ダッシュを半角ハイフンに変換
+          val = val.replace(/[ー−‐－—–ｰ]/g, '-');
+
+          // 3. 数字と半角ハイフン以外の不要な文字（スペースや文字など）を削除
+          val = val.replace(/[^0-9-]/g, '');
+
+          // 入力欄の表示をキレイな状態に更新
+          target.value = val;
+
+          // 4. API検索用にハイフンを除去した「数字のみ」の文字列を作成
+          const pureNumbers = val.replace(/-/g, '');
+
+          // 5. 数字がちょうど7桁揃った場合のみAPIを呼び出す
+          if (pureNumbers.length === 7) {
             try {
-              const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${val}`);
+              const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${pureNumbers}`);
               const data = await res.json();
               if (data.status === 200 && data.results) {
                 const result = data.results[0];
@@ -220,9 +238,18 @@ const PREFECTURES = [
         submitBtn.textContent = '更新中...';
 
         try {
+          const user = getCurrentUser();
+          if (!user) {
+            alert('ログインセッションが切れました。再度ログインしてください。');
+            window.location.href = '/login';
+            return;
+          }
+
           const fd = new FormData(form!);
           const db = getDb();
           if (!db) throw new Error('DB Error');
+
+          const userDocRef = doc(db, 'users', user.uid);
 
           const updateData = {
             last_name: fd.get('last_name') ?? '',
@@ -242,6 +269,7 @@ const PREFECTURES = [
             pet_ride: fd.get('pet_ride') ?? '',
             pet: fd.get('pet_ride') ?? '',
             memo: fd.get('memo') ?? '',
+            userRef: userDocRef,
             updated_at: new Date(),
           };
 
@@ -287,7 +315,6 @@ const PREFECTURES = [
 
           if (currentMemberCode) {
             try {
-              const user = getCurrentUser();
               const laravelRes = await fetch('https://roadcruise-share.com/api/members/update-by-code', {
                 method: 'POST',
                 headers: {

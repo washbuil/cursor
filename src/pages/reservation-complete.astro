@@ -1,67 +1,82 @@
 ---
+export const prerender = false;
 import '../styles/globals.css';
 import Header from '../components/Header.astro';
-
-const id = Astro.url.searchParams.get('id');
 ---
 
 <!DOCTYPE html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="仮予約を受け付けました - キャンピングカーレンタル" />
+    <meta name="description" content="予約完了 - キャンピングカーレンタル" />
     <title>予約完了 | キャンピングカーレンタル</title>
   </head>
   <body class="min-h-screen bg-background text-foreground">
     <Header />
 
     <main class="flex min-h-[calc(100vh-3.5rem)] flex-col items-center justify-center px-4 py-12">
-      <div class="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg sm:p-8">
-        <!-- チェックマークアイコン -->
-        <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 sm:h-24 sm:w-24">
-          <svg class="h-12 w-12 text-green-600 sm:h-14 sm:w-14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-2.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+      <div class="w-full max-w-lg rounded-xl border border-border bg-card p-8 shadow-lg text-center">
+        <div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
 
-        <h1 class="text-center text-xl font-bold text-foreground sm:text-2xl">
-          仮予約を受け付けました
-        </h1>
+        <h1 class="mb-2 text-2xl font-bold text-foreground">予約リクエスト送信完了</h1>
+        <p class="text-muted-foreground">ご予約ありがとうございます。</p>
 
-        {id ? (
-          <p class="mt-4 rounded-lg bg-muted/50 px-4 py-3 text-center text-base font-semibold text-foreground tabular-nums sm:text-lg">
-            予約ID: <span class="text-primary">{id}</span>
-          </p>
-        ) : (
-          <p class="mt-4 text-center text-sm text-muted-foreground">予約IDは取得できませんでした。</p>
-        )}
+        <div class="my-8 rounded-md bg-muted/50 p-4">
+          <p class="text-sm text-muted-foreground mb-1">予約ID</p>
+          <p id="booking-id-display" class="text-xl font-mono font-bold tracking-wide text-foreground">Loading...</p>
+        </div>
 
-        <div class="mt-6 space-y-3 text-sm text-muted-foreground sm:text-base">
+        <div class="space-y-4 text-sm text-muted-foreground text-left">
+          <p>ご登録のメールアドレスへ確認メールを送信しました。</p>
           <p>
-            ご予約ありがとうございます。登録されたメールアドレスへ確認メールを送信しました。
-          </p>
-          <p>
-            現在は仮予約の状態です。管理者からの承認をお待ちください。
+            現在は<span class="font-medium text-foreground">仮予約</span>の状態です。
+            管理者またはオーナーが内容を確認し、承認されると予約確定となります。
           </p>
         </div>
 
-        <div class="mt-8">
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a
+            id="link-mypage"
+            href="/booking-list"
+            class="flex-1 inline-flex items-center justify-center rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors"
+          >
+            マイページで予約を確認する
+          </a>
           <a
             href="/"
-            class="flex h-12 w-full items-center justify-center rounded-md bg-primary px-6 text-base font-semibold text-primary-foreground shadow transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            class="flex-1 inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            トップページへ戻る
+            トップページへ
           </a>
         </div>
       </div>
     </main>
 
-    <footer class="mt-auto border-t border-border bg-primary py-8 text-primary-foreground">
-      <div class="container mx-auto max-w-6xl px-4 text-center">
-        <a href="/" class="text-lg font-bold text-primary-foreground">キャンピングカーレンタル</a>
-        <p class="mt-2 text-sm text-primary-foreground/70">© {new Date().getFullYear()} キャンピングカーレンタル. All rights reserved.</p>
+    <footer class="mt-auto border-t border-border py-6">
+      <div class="container mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} キャンピングカーレンタル
       </div>
     </footer>
+
+    <script>
+      // URLパラメータからIDを取得して表示
+      const params = new URLSearchParams(window.location.search);
+      const bookingId = params.get('id');
+      const idEl = document.getElementById('booking-id-display');
+      const linkEl = document.getElementById('link-mypage') as HTMLAnchorElement;
+
+      if (bookingId) {
+        if (idEl) idEl.textContent = bookingId;
+        if (linkEl) linkEl.href = `/booking-detail?id=${bookingId}`;
+      } else {
+        if (idEl) idEl.textContent = '-';
+      }
+    </script>
   </body>
 </html>

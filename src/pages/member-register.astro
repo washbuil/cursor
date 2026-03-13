@@ -19,6 +19,7 @@ const PREFECTURES = [
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="会員情報登録 - キャンピングカーレンタル" />
     <title>会員情報登録 | キャンピングカーレンタル</title>
@@ -166,10 +167,27 @@ const PREFECTURES = [
 
         if (postalCodeInput && prfSelect && addressInput) {
           postalCodeInput.addEventListener('input', async (e) => {
-            const val = (e.target as HTMLInputElement).value.replace(/-/g, '');
-            if (val.length === 7) {
+            const target = e.target as HTMLInputElement;
+
+            // 1. 全角数字を半角数字に変換
+            let val = target.value.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+            // 2. あらゆる種類のハイフンや長音符、ダッシュを半角ハイフンに変換
+            val = val.replace(/[ー−‐－—–ｰ]/g, '-');
+
+            // 3. 数字と半角ハイフン以外の不要な文字（スペースや文字など）を削除
+            val = val.replace(/[^0-9-]/g, '');
+
+            // 入力欄の表示をキレイな状態に更新
+            target.value = val;
+
+            // 4. API検索用にハイフンを除去した「数字のみ」の文字列を作成
+            const pureNumbers = val.replace(/-/g, '');
+
+            // 5. 数字がちょうど7桁揃った場合のみAPIを呼び出す
+            if (pureNumbers.length === 7) {
               try {
-                const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${val}`);
+                const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${pureNumbers}`);
                 const data = await res.json();
 
                 if (data.status === 200 && data.results && data.results[0]) {
@@ -248,12 +266,14 @@ const PREFECTURES = [
             if (db) {
               const membersRef = collection(db, 'members');
               const newMemberDocRef = doc(membersRef);
+              const userDocRef = doc(db, 'users', user.uid);
 
               await setDoc(newMemberDocRef, {
                 ...laravelData,
                 payment_method: paymentMethod,
                 pet_ride: petRide,
                 user_id: user.uid,
+                userRef: userDocRef,
                 created_at: new Date(),
               });
 

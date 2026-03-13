@@ -1,0 +1,561 @@
+---
+export const prerender = false;
+import '../styles/globals.css';
+
+const PREFECTURES = [
+  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県',
+];
+---
+
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="新規会員登録 - キャンピングカーレンタル" />
+    <title>新規会員登録 | キャンピングカーレンタル</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <main class="container mx-auto max-w-3xl px-4 py-12">
+      <div class="mb-8 text-center">
+        <div class="text-xl font-bold tracking-widest text-green-700 mb-2">ロードクルーズ</div>
+        <h1 class="text-2xl font-bold text-foreground md:text-3xl">新規会員登録</h1>
+        <p class="mt-2 text-muted-foreground">アカウント作成、詳細情報、免許証の登録を一度に行います。</p>
+      </div>
+
+      <form id="register-form" class="space-y-8 rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
+        
+        <section class="space-y-4">
+          <h2 class="text-xl font-bold border-b border-border pb-2">1. アカウント情報</h2>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">ニックネーム (表示名)</label>
+            <input type="text" name="display_name" required placeholder="ロードクルーズ太郎" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">メールアドレス</label>
+            <input type="email" name="email" required placeholder="example@email.com" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">パスワード (6文字以上)</label>
+            <input type="password" name="password" required minlength="6" placeholder="••••••••" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+        </section>
+
+        <section class="space-y-4">
+          <h2 class="text-xl font-bold border-b border-border pb-2">2. 会員情報</h2>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">お名前 (姓・名)</label>
+            <div class="grid grid-cols-2 gap-4">
+              <input type="text" name="last_name" placeholder="姓" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+              <input type="text" name="first_name" placeholder="名" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">フリガナ (セイ・メイ)</label>
+            <div class="grid grid-cols-2 gap-4">
+              <input type="text" name="last_name_kana" placeholder="セイ" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+              <input type="text" name="first_name_kana" placeholder="メイ" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">携帯電話番号</label>
+            <input type="tel" name="mobile_phone" placeholder="09012345678" required pattern="^0\d{1,4}-?\d{1,4}-?\d{4}$" title="正しい電話番号を半角数字で入力してください（例：090-1234-5678 または 09012345678）" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">自宅電話番号 (任意)</label>
+            <input type="tel" name="phone_number" placeholder="0312345678" pattern="^0\d{1,4}-?\d{1,4}-?\d{4}$" title="正しい電話番号を半角数字で入力してください" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">郵便番号</label>
+              <input type="text" name="postal_code" placeholder="123-4567" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">都道府県</label>
+              <select name="prf" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="">選択してください</option>
+                {PREFECTURES.map((pref) => <option value={pref}>{pref}</option>)}
+              </select>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">住所 (市区町村・番地)</label>
+            <input type="text" name="address" placeholder="〇〇市〇〇区〇〇町〇番地" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">建物名・部屋番号 (任意)</label>
+            <input type="text" name="room_number" placeholder="〇〇マンション 101号室" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">お支払い方法</label>
+              <select name="payment_method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="クレジットカード">クレジットカード</option>
+                <option value="銀行振込">銀行振込</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">ペット乗車</label>
+              <select name="pet_ride" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="ペット乗車なし">ペット乗車なし</option>
+                <option value="ペット乗車あり">ペット乗車あり</option>
+              </select>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">メモ (任意)</label>
+            <textarea name="memo" rows="3" placeholder="備考があれば入力" class="flex w-full rounded-md border border-input bg-background px-3 py-2"></textarea>
+          </div>
+        </section>
+
+        <section class="space-y-4">
+          <h2 class="text-xl font-bold border-b border-border pb-2">3. 免許証・書類アップロード</h2>
+          <p class="text-sm text-muted-foreground">スマートフォンで撮影した画像を選択してください。</p>
+          
+          <div class="grid gap-6 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">免許証（表面）<span class="text-red-500 ml-1">*</span></label>
+              <input type="file" name="license_front" accept="image/*" required class="w-full text-sm" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">免許証（裏面）<span class="text-red-500 ml-1">*</span></label>
+              <input type="file" name="license_back" accept="image/*" required class="w-full text-sm" />
+            </div>
+            <div class="space-y-2 md:col-span-2">
+              <label class="text-sm font-medium">住所確認書類</label>
+              <p class="text-xs text-muted-foreground mb-1">※現住所と免許証の住所が異なる場合のみアップロードしてください。</p>
+              <input type="file" name="address_doc" accept="image/*" class="w-full text-sm" />
+            </div>
+          </div>
+        </section>
+
+        <div class="pt-4 space-y-6">
+          <div class="rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/30">
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="terms" required class="h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+              <label for="terms" class="text-sm font-medium leading-none">
+                <a href="https://roadcruise.jp/wp/wp-content/uploads/2020/06/20200618-%E8%B2%B8%E6%B8%A1%E7%B4%84%E6%AC%BE-%E3%83%AD%E3%83%BC%E3%83%89%E3%82%AF%E3%83%AB%E3%83%BC%E3%82%BA-.pdf" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:opacity-90">貸渡約款</a> に同意します
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn" class="w-full rounded-md bg-green-700 py-4 text-lg font-bold text-white hover:bg-green-800 focus:ring focus:ring-green-600 disabled:opacity-50">
+            上記の内容で登録する
+          </button>
+        </div>
+      </form>
+    </main>
+
+    <footer class="mt-auto border-t border-border py-6">
+      <div class="container mx-auto max-w-6xl px-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} キャンピングカーレンタル
+      </div>
+    </footer>
+
+    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
+      window.pageData = { apiToken };
+    </script>
+
+    <script>
+      import { getAuth, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, fetchSignInMethodsForEmail } from 'firebase/auth';
+      import { getFirebaseApp, getDb, getFirebaseStorage } from '../lib/firebase';
+      import { doc, setDoc } from 'firebase/firestore';
+      import { ref, uploadBytes, getDownloadURL, type FirebaseStorage } from 'firebase/storage';
+
+      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
+      const apiToken = pageData?.apiToken ?? '';
+
+      const form = document.getElementById('register-form') as HTMLFormElement;
+      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+      const postalCodeInput = document.querySelector<HTMLInputElement>('input[name="postal_code"]');
+      const prfSelect = document.querySelector<HTMLSelectElement>('select[name="prf"]');
+      const addressInput = document.querySelector<HTMLInputElement>('input[name="address"]');
+
+      // 郵便番号からの住所自動入力
+      if (postalCodeInput && prfSelect && addressInput) {
+        postalCodeInput.addEventListener('input', async (e) => {
+          const target = e.target as HTMLInputElement;
+
+          // 1. 全角数字を半角数字に変換
+          let val = target.value.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+          // 2. あらゆる種類のハイフンや長音符、ダッシュを半角ハイフンに変換
+          val = val.replace(/[ー−‐－—–ｰ]/g, '-');
+
+          // 3. 数字と半角ハイフン以外の不要な文字（スペースや文字など）を削除
+          val = val.replace(/[^0-9-]/g, '');
+
+          // 入力欄の表示をキレイな状態に更新
+          target.value = val;
+
+          // 4. API検索用にハイフンを除去した「数字のみ」の文字列を作成
+          const pureNumbers = val.replace(/-/g, '');
+
+          // 5. 数字がちょうど7桁揃った場合のみAPIを呼び出す
+          if (pureNumbers.length === 7) {
+            try {
+              const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${pureNumbers}`);
+              const data = await res.json();
+              if (data.status === 200 && data.results?.[0]) {
+                const r = data.results[0];
+                prfSelect.value = r.address1 ?? '';
+                addressInput.value = (r.address2 ?? '') + (r.address3 ?? '');
+              }
+            } catch (_err) {
+              // ignore
+            }
+          }
+        });
+      }
+
+      // メールアドレス重複チェック (デバウンス処理)
+      const emailInput = form?.querySelector('input[name="email"]') as HTMLInputElement | null;
+      if (emailInput && submitBtn) {
+        const emailCheckMsg = document.createElement('div');
+        emailCheckMsg.className = 'text-sm text-destructive mt-1 hidden';
+        emailInput.parentNode?.appendChild(emailCheckMsg);
+
+        let typingTimer: ReturnType<typeof setTimeout>;
+        const doneTypingInterval = 1000; // 1秒間入力が止まったらチェック
+
+        emailInput.addEventListener('input', () => {
+          // 入力中・修正中はタイマーをリセットし、エラーを隠してボタンを有効にする
+          clearTimeout(typingTimer);
+          emailCheckMsg.classList.add('hidden');
+          submitBtn.disabled = false;
+
+          // 入力が止まってからチェックを実行するタイマーをセット
+          typingTimer = setTimeout(async () => {
+            const email = emailInput.value.trim();
+            // 簡単な形式チェック（空や@がない場合はAPIを叩かない）
+            if (!email || !email.includes('@')) {
+              return;
+            }
+
+            const app = getFirebaseApp();
+            if (!app) return;
+            const auth = getAuth(app);
+
+            try {
+              const methods = await fetchSignInMethodsForEmail(auth, email);
+              if (methods.length > 0) {
+                // 既に登録されている場合
+                emailCheckMsg.innerHTML = 'このメールアドレスは既に登録されています。<br><a href="https://web.roadcruise.jp/" target="_blank" class="underline text-primary hover:no-underline">https://web.roadcruise.jp/</a> からログインしてください。';
+                emailCheckMsg.classList.remove('hidden');
+                submitBtn.disabled = true;
+              }
+            } catch (err) {
+              console.error('Email check failed:', err);
+              // エラー時はユーザーの操作を妨げないようにする
+            }
+          }, doneTypingInterval);
+        });
+      }
+
+      // 画像アップロード用関数
+      async function uploadImage(storage: FirebaseStorage, file: File, userId: string, fileName: string): Promise<string> {
+        const path = `licenses/${userId}/${fileName}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        return await getDownloadURL(storageRef);
+      }
+
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!submitBtn) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '処理中... (このままお待ちください)';
+
+        try {
+          const fd = new FormData(form);
+          const displayName = (fd.get('display_name') ?? '').toString().trim();
+          const email = (fd.get('email') ?? '').toString().trim();
+          const password = (fd.get('password') ?? '').toString();
+          const paymentMethod = (fd.get('payment_method') ?? '').toString();
+          const petRide = (fd.get('pet_ride') ?? '').toString();
+          const originalMemo = (fd.get('memo') ?? '').toString().trim();
+          const combinedMemo = originalMemo
+            ? `${originalMemo}\n\n【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim()
+            : `【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim();
+
+          const app = getFirebaseApp();
+          if (!app) throw new Error('Firebase が設定されていません');
+
+          // 1. Firebase Auth アカウント作成 & ニックネーム設定 & メール認証送信
+          const auth = getAuth(app);
+          auth.languageCode = 'ja';
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+          const uid = user.uid;
+
+          await updateProfile(user, { displayName: displayName });
+          await sendEmailVerification(user); // メール認証を送信
+
+          // 1.5 Laravel API へユーザー追加 (add_user) を行う
+          try {
+            const addUserRes = await fetch('https://roadcruise-share.com/api/user/add_user', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify({
+                flutter_user_id: uid,
+                name: displayName || ((fd.get('last_name') ?? '') + ' ' + (fd.get('first_name') ?? '')).trim(),
+                email,
+                password,
+              }),
+            });
+
+            if (!addUserRes.ok) {
+              const errText = await addUserRes.text();
+              throw new Error('ユーザー初期登録に失敗しました: ' + errText);
+            }
+          } catch (addUserErr) {
+            console.error('add_user Error:', addUserErr);
+            if (addUserErr instanceof Error && addUserErr.message.startsWith('ユーザー初期登録に失敗しました')) throw addUserErr;
+            throw new Error('ユーザー初期登録の通信に失敗しました。');
+          }
+
+          // 1.6 FileMaker API へユーザー追加 (usersレイアウト) を行う
+          try {
+            const fmUserRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify({
+                database: 'webapp',
+                layout_name: 'users',
+                data: {
+                  role: 'guest',
+                  email,
+                  display_name: displayName,
+                  userRef: uid,
+                  plan: '通常',
+                },
+              }),
+            });
+
+            if (!fmUserRes.ok) {
+              console.error('FileMaker Users API Error:', await fmUserRes.text());
+            }
+          } catch (fmUserErr) {
+            console.error('FileMaker Users Sync Failed:', fmUserErr);
+          }
+
+          const db = getDb();
+          const storage = getFirebaseStorage();
+          if (!db || !storage) throw new Error('Firebase initialization error');
+
+          const userDocRef = doc(db, 'users', uid);
+
+          // 2. 画像アップロード
+          let frontUrl = '';
+          let backUrl = '';
+          let addressUrl = '';
+          const fFront = fd.get('license_front') as File | null;
+          const fBack = fd.get('license_back') as File | null;
+          const fAddress = fd.get('address_doc') as File | null;
+
+          if (fFront?.size) frontUrl = await uploadImage(storage, fFront, uid, 'license_face.jpg');
+          if (fBack?.size) backUrl = await uploadImage(storage, fBack, uid, 'license_back_image.jpg');
+          if (fAddress?.size) addressUrl = await uploadImage(storage, fAddress, uid, 'license_address_image.jpg');
+
+          // 3. Laravel API へデータ送信 (ユーザー作成のためのemail, name と、管理者通知のための画像URLを追加)
+          const laravelPayload = {
+            flutter_user_id: uid,
+            email: email,
+            name: displayName,
+            last_name: fd.get('last_name'),
+            first_name: fd.get('first_name'),
+            last_name_kana: fd.get('last_name_kana'),
+            first_name_kana: fd.get('first_name_kana'),
+            mobile_phone: fd.get('mobile_phone'),
+            phone_number: fd.get('phone_number') ?? '',
+            postal_code: fd.get('postal_code'),
+            prf: fd.get('prf'),
+            address: fd.get('address'),
+            room_number: fd.get('room_number') ?? '',
+            memo: combinedMemo,
+            payment_method: paymentMethod,
+            pet_ride: petRide,
+            // 管理者メール通知用画像URL
+            license_front_url: frontUrl,
+            license_back_url: backUrl,
+            address_doc_url: addressUrl,
+          };
+
+          const laravelRes = await fetch('https://roadcruise-share.com/api/member/add', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+            },
+            body: JSON.stringify(laravelPayload),
+          });
+
+          if (!laravelRes.ok) {
+            const errText = await laravelRes.text();
+            throw new Error(errText || '会員登録に失敗しました');
+          }
+
+          const laravelData = await laravelRes.json().catch(() => ({}));
+
+          // laravelDataの中の null をすべて空文字列("")に変換する
+          const cleanLaravelData = Object.fromEntries(
+            Object.entries(laravelData).map(([key, value]) => [key, value === null ? '' : value])
+          );
+
+          // 4. Firestore 保存 (Members & Licenses & Users)
+          // uid をドキュメントIDとして指定
+          const newMemberDocRef = doc(db, 'members', uid);
+          await setDoc(newMemberDocRef, {
+            ...cleanLaravelData,
+            payment_method: paymentMethod,
+            pet_ride: petRide,
+            user_id: uid,
+            userRef: userDocRef,
+            created_at: new Date(),
+          });
+
+          // uid をドキュメントIDとして指定
+          const newLicenseDocRef = doc(db, 'licenses', uid);
+          await setDoc(newLicenseDocRef, {
+            user_id: uid,
+            userRef: userDocRef,
+            license_front_image: frontUrl,
+            license_back_image: backUrl,
+            address_verification_image: addressUrl,
+            identification_image: '',
+            status: '確認中',
+            created_at: new Date(),
+          });
+
+          await setDoc(userDocRef, {
+            email: email,
+            display_name: displayName,
+            role: 'member',
+            plan: '通常',
+            is_member_registered: true,
+            memberRef: newMemberDocRef,
+            licenseRef: newLicenseDocRef,
+            userRef: userDocRef,
+            created_at: new Date(),
+          });
+
+          // 5. FileMaker API (membersレイアウト)
+          try {
+            const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify({
+                database: 'webapp',
+                layout_name: 'members',
+                data: {
+                  last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
+                  first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
+                  last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
+                  first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
+                  mobile_email: email,
+                  mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
+                  home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
+                  prefectures: fd.get('prf'),
+                  post_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                  address: fd.get('address'),
+                  room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
+                  payment_method: paymentMethod,
+                  userRef: uid,
+                  pet: petRide,
+                  memo: combinedMemo,
+                  member_code: laravelData.member_code ?? '',
+                },
+              }),
+            });
+            if (!fmRes.ok) {
+              const errText = await fmRes.text();
+              console.error('FileMaker members API Error:', errText);
+            }
+          } catch (fmErr) {
+            console.error('FileMaker members Sync Failed:', fmErr);
+          }
+
+          // 6. FileMaker API (licensesレイアウト)
+          try {
+            // FileMaker用に現在日時をフォーマット (例: 3/13/2026 00:00:00)
+            const now = new Date();
+            const createdAtStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()} 00:00:00`;
+
+            const fmLicenseRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
+              },
+              body: JSON.stringify({
+                database: 'webapp',
+                layout_name: 'licenses',
+                data: {
+                  licenseRef: newLicenseDocRef.id,
+                  userRef: uid,
+                  // フォームに存在しないテキスト項目は空文字エラーを防ぐため '-' を設定
+                  license_number: '-',
+                  license_color: '-',
+                  license_type: '-',
+                  created_at: createdAtStr
+                  // birthday, license_expiration_date は未入力による日付型エラーを防ぐためキーごと除外しています
+                },
+              }),
+            });
+
+            if (!fmLicenseRes.ok) {
+              const errText = await fmLicenseRes.text();
+              console.error('FileMaker licenses API Error:', errText);
+            }
+          } catch (fmLisErr) {
+            console.error('FileMaker licenses Sync Failed:', fmLisErr);
+          }
+
+          // 完了通知とリダイレクト
+          alert(
+            '会員登録のお申し込みが完了しました。\n\n' +
+            'ご入力いただいたメールアドレスに確認メールを送信しましたので、メール内のリンクをクリックして認証を完了させてください。\n\n' +
+            '【重要】\n' +
+            '現在、ご登録内容の確認とシステムへの反映を行っております。\n' +
+            '設定が完了次第、予約システムへのログインが可能になりますので、今しばらくお待ちください。\n\n' +
+            'OKを押すと公式サイトへ移動します。'
+          );
+          window.location.href = 'https://roadcruise.jp/';
+
+        } catch (err: unknown) {
+          console.error(err);
+          let msg = err instanceof Error ? err.message : '不明なエラー';
+          const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+          
+          if (code === 'auth/email-already-in-use') msg = 'このメールアドレスは既に登録されています。';
+          else if (code === 'auth/weak-password') msg = 'パスワードは6文字以上で設定してください。';
+          else if (code === 'auth/invalid-email') msg = 'メールアドレスの形式が正しくありません。';
+          
+          alert('登録中にエラーが発生しました: ' + msg);
+          submitBtn.disabled = false;
+          submitBtn.textContent = '上記の内容で登録する';
+        }
+      });
+    </script>
+  </body>
+</html>

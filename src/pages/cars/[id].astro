@@ -39,6 +39,7 @@ interface CarData {
   ownerCode: string;
   calendarId: string;
   emails: string;
+  ownerMails: string[];
 }
 
 function getImageUrl(value: unknown): string {
@@ -75,6 +76,9 @@ if (db && id) {
       const ownerCode = data.owner_code != null ? String(data.owner_code) : '1';
       const calendarId = data.calendar_id != null ? String(data.calendar_id) : '1';
       const emails = data.emails != null ? String(data.emails) : 'mail@washbuil.com';
+      const ownerMails = Array.isArray(data.owner_mails)
+        ? data.owner_mails.filter((e): e is string => typeof e === 'string')
+        : [];
 
       car = {
         id: docSnap.id,
@@ -101,6 +105,7 @@ if (db && id) {
         ownerCode,
         calendarId,
         emails,
+        ownerMails,
       };
     }
   } catch (_err) {
@@ -117,6 +122,7 @@ function formatPrice(value: number): string {
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={car ? `${car.name} - キャンピングカーレンタル` : '車両詳細'} />
     <title>{car ? `${car.name} | キャンピングカーレンタル` : '車両が見つかりません'}</title>
@@ -322,6 +328,7 @@ function formatPrice(value: number): string {
       ownerCode: car?.ownerCode ?? '1', 
       calendarId: car?.calendarId ?? '1', 
       emails: car?.emails ?? 'mail@washbuil.com', 
+      ownerMails: car?.ownerMails ?? [], 
       stationName: car?.pickupLocation?.name ?? '横浜上永谷', 
       carName: car?.name ?? '車両名' 
     }}>
@@ -333,6 +340,7 @@ function formatPrice(value: number): string {
         ownerCode,
         calendarId,
         emails,
+        ownerMails,
         stationName,
         carName
       };
@@ -340,10 +348,12 @@ function formatPrice(value: number): string {
 
     <script>
       import { getCurrentUser } from '../../lib/auth';
+      import { getDb } from '../../lib/firebase';
+      import { collection, query, where, getDocs } from 'firebase/firestore';
 
       document.addEventListener('DOMContentLoaded', () => {
         // 保存したデータを取得
-        const { carId, apiToken, stationCode, ownerCode, calendarId, emails, stationName, carName } = window.bookingData;
+        const { carId, apiToken, stationCode, ownerCode, calendarId, emails, ownerMails, stationName, carName } = window.bookingData;
 
         const API_PRICE_URL = 'https://roadcruise-share.com/api/lending/price_calculate';
 
@@ -473,7 +483,7 @@ function formatPrice(value: number): string {
         if (petCheckbox) petCheckbox.addEventListener('change', calculatePrice);
 
         // 予約ボタン処理
-        reserveBtn.addEventListener('click', function submitReservation() {
+        reserveBtn.addEventListener('click', async function submitReservation() {
           // 1. ログインチェック
           const user = getCurrentUser();
           if (!user) {
@@ -511,13 +521,45 @@ function formatPrice(value: number): string {
           reserveBtn.disabled = true;
           reserveBtn.textContent = '送信中...';
 
+          const emailSet = new Set<string>();
+
+          if (emails) {
+            emails.split(',').forEach((e) => {
+              const t = e.trim();
+              if (t) emailSet.add(t);
+            });
+          }
+
+          try {
+            const db = getDb();
+            if (db) {
+              const q = query(collection(db, 'users'), where('role', '==', 'admin'));
+              const querySnapshot = await getDocs(q);
+              querySnapshot.docs.forEach((d) => {
+                const email = d.data().email;
+                if (email) emailSet.add(String(email).trim());
+              });
+            }
+          } catch (e) {
+            console.error('メールアドレス取得エラー:', e);
+          }
+
+          if (ownerMails && ownerMails.length > 0) {
+            ownerMails.forEach((e) => {
+              const t = String(e).trim();
+              if (t) emailSet.add(t);
+            });
+          }
+
+          const emailString = Array.from(emailSet).join(',');
+
           // 3. 送信データの作成 (ログインユーザー情報を使用)
           const payload = {
             calendar_id: calendarId,
             car_id: String(carId), // 文字列に変換
             owner_code: ownerCode,
             station_code: stationCode,
-            emails: emails,
+            emails: emailString,
             user_email: user.email ?? 'mail@washbuil.com',
             first_name: 'ユーザー', // 必要であれば別途入力欄を作るか、DBから取得
             last_name: '名',
