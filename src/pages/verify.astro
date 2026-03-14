@@ -8,7 +8,7 @@ import '../styles/globals.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>メールアドレスの確認 | キャンピングカーレンタル</title>
+    <title>アカウント認証 | キャンピングカーレンタル</title>
     <link rel="icon" type="image/x-icon" href="/favicon.png" />
   </head>
   <body class="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -16,7 +16,7 @@ import '../styles/globals.css';
       <div class="text-xl font-bold tracking-widest text-green-700 mb-6">ロードクルーズ</div>
       
       <div id="loading-area">
-        <h1 class="text-xl font-bold text-foreground mb-2">認証しています...</h1>
+        <h1 class="text-xl font-bold text-foreground mb-2">確認しています...</h1>
         <p class="text-sm text-muted-foreground">このまましばらくお待ちください。</p>
       </div>
 
@@ -40,15 +40,43 @@ import '../styles/globals.css';
           </svg>
         </div>
         <h1 class="text-xl font-bold text-foreground mb-2">認証に失敗しました</h1>
-        <p id="error-message" class="text-sm text-muted-foreground mb-6">リンクの有効期限が切れているか、すでに認証済みです。</p>
+        <p id="error-message" class="text-sm text-muted-foreground mb-6">リンクの有効期限が切れているか、すでに使用されています。</p>
         <a href="/login" class="inline-block w-full rounded-md border border-border bg-background py-3 text-base font-bold text-foreground hover:bg-muted">
           ログイン画面へ戻る
+        </a>
+      </div>
+
+      <div id="reset-password-area" class="hidden">
+        <h1 class="text-xl font-bold text-foreground mb-2">新しいパスワードの設定</h1>
+        <p class="text-sm text-muted-foreground mb-6 text-left">新しいパスワードを入力してください。</p>
+        <form id="reset-form" class="space-y-4 text-left">
+          <div>
+            <label class="block text-sm font-medium mb-1">新しいパスワード (6文字以上)</label>
+            <input type="password" id="new-password" required minlength="6" class="w-full rounded-md border border-input px-3 py-2 bg-background focus:ring-2 focus:ring-green-600 outline-none" />
+          </div>
+          <div id="reset-error" class="text-sm text-red-600 hidden"></div>
+          <button type="submit" id="reset-submit" class="w-full rounded-md bg-green-700 py-3 font-bold text-white hover:bg-green-800 focus:ring-2 focus:ring-green-600 focus:ring-offset-2 outline-none transition-opacity disabled:opacity-50">
+            パスワードを再設定する
+          </button>
+        </form>
+      </div>
+
+      <div id="reset-success-area" class="hidden">
+        <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+          <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h1 class="text-xl font-bold text-foreground mb-2">パスワードを変更しました</h1>
+        <p class="text-sm text-muted-foreground mb-6">新しいパスワードでログインしてください。</p>
+        <a href="/login" class="inline-block w-full rounded-md bg-green-700 py-3 text-base font-bold text-white hover:bg-green-800">
+          ログイン画面へ
         </a>
       </div>
     </div>
 
     <script>
-      import { getAuth, applyActionCode } from 'firebase/auth';
+      import { getAuth, applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'firebase/auth';
       import { getFirebaseApp } from '../lib/firebase';
 
       document.addEventListener('DOMContentLoaded', async () => {
@@ -56,19 +84,34 @@ import '../styles/globals.css';
         const successArea = document.getElementById('success-area');
         const errorArea = document.getElementById('error-area');
         const errorMessage = document.getElementById('error-message');
+        const resetPasswordArea = document.getElementById('reset-password-area');
+        const resetSuccessArea = document.getElementById('reset-success-area');
+        const resetForm = document.getElementById('reset-form');
+        const newPasswordInput = document.getElementById('new-password') as HTMLInputElement;
+        const resetError = document.getElementById('reset-error');
+        const resetSubmitBtn = document.getElementById('reset-submit') as HTMLButtonElement;
 
         // URLからパラメータを取得
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode');
         const actionCode = urlParams.get('oobCode');
 
-        if (mode === 'verifyEmail' && actionCode) {
-          const app = getFirebaseApp();
-          if (!app) return;
-          const auth = getAuth(app);
+        const app = getFirebaseApp();
+        if (!app) return;
+        const auth = getAuth(app);
 
+        if (!actionCode) {
+          loadingArea?.classList.add('hidden');
+          if (errorMessage) errorMessage.textContent = '不正なアクセスです。正しいリンクからアクセスしてください。';
+          errorArea?.classList.remove('hidden');
+          return;
+        }
+
+        if (mode === 'verifyEmail') {
+          // ==============================
+          // 1. メール認証の処理
+          // ==============================
           try {
-            // Firebaseに認証コードを送信して確認を完了させる
             await applyActionCode(auth, actionCode);
             loadingArea?.classList.add('hidden');
             successArea?.classList.remove('hidden');
@@ -77,8 +120,52 @@ import '../styles/globals.css';
             loadingArea?.classList.add('hidden');
             errorArea?.classList.remove('hidden');
           }
+
+        } else if (mode === 'resetPassword') {
+          // ==============================
+          // 2. パスワードリセットの処理
+          // ==============================
+          try {
+            // まずコードが有効か確認する
+            await verifyPasswordResetCode(auth, actionCode);
+            // 成功したら入力フォームを表示
+            loadingArea?.classList.add('hidden');
+            resetPasswordArea?.classList.remove('hidden');
+
+            // フォーム送信時の処理
+            resetForm?.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              if (!resetSubmitBtn || !newPasswordInput) return;
+              
+              resetSubmitBtn.disabled = true;
+              resetSubmitBtn.textContent = '更新中...';
+              resetError?.classList.add('hidden');
+
+              try {
+                await confirmPasswordReset(auth, actionCode, newPasswordInput.value);
+                resetPasswordArea?.classList.add('hidden');
+                resetSuccessArea?.classList.remove('hidden');
+              } catch (err) {
+                console.error('Password Reset Error:', err);
+                if (resetError) {
+                  resetError.textContent = 'パスワードの更新に失敗しました。';
+                  resetError.classList.remove('hidden');
+                }
+                resetSubmitBtn.disabled = false;
+                resetSubmitBtn.textContent = 'パスワードを再設定する';
+              }
+            });
+
+          } catch (error) {
+            // リンクが無効・期限切れの場合
+            console.error('Verify Reset Code Error:', error);
+            loadingArea?.classList.add('hidden');
+            if (errorMessage) errorMessage.textContent = 'パスワードリセットのリンクが無効または期限切れです。再度パスワードの再設定手続きを行ってください。';
+            errorArea?.classList.remove('hidden');
+          }
+
         } else {
-          // 無効なURLの場合
+          // その他のモード
           loadingArea?.classList.add('hidden');
           if (errorMessage) errorMessage.textContent = '不正なアクセスです。正しいリンクからアクセスしてください。';
           errorArea?.classList.remove('hidden');
