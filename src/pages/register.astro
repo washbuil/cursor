@@ -215,6 +215,22 @@ const PREFECTURES = [
         });
       }
 
+      // 電話番号の入力制御（全角数字を半角に変換し、数字とハイフン以外を削除）
+      const telInputs = document.querySelectorAll<HTMLInputElement>('input[type="tel"]');
+      telInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
+          const target = e.target as HTMLInputElement;
+          // 1. 全角数字を半角数字に変換
+          let val = target.value.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+          // 2. あらゆるハイフンや長音符を半角ハイフンに変換
+          val = val.replace(/[ー−‐－—–ｰ]/g, '-');
+          // 3. 数字と半角ハイフン以外の文字を削除
+          val = val.replace(/[^0-9-]/g, '');
+          // 値を更新
+          target.value = val;
+        });
+      });
+
       // メールアドレス重複チェック (デバウンス処理)
       const emailInput = form?.querySelector('input[name="email"]') as HTMLInputElement | null;
       if (emailInput && submitBtn) {
