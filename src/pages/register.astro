@@ -96,14 +96,16 @@ const PREFECTURES = [
           <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
               <label class="text-sm font-medium">お支払い方法</label>
-              <select name="payment_method" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+              <select name="payment_method" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="" disabled selected>選択してください</option>
                 <option value="クレジットカード">クレジットカード</option>
                 <option value="銀行振込">銀行振込</option>
               </select>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-medium">ペット乗車</label>
-              <select name="pet_ride" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+              <select name="pet_ride" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+                <option value="" disabled selected>選択してください</option>
                 <option value="ペット乗車なし">ペット乗車なし</option>
                 <option value="ペット乗車あり">ペット乗車あり</option>
               </select>
