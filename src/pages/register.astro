@@ -215,7 +215,7 @@ const PREFECTURES = [
         });
       }
 
-      // 電話番号の入力制御（全角数字を半角に変換し、数字とハイフン以外を削除）
+      // 電話番号の入力制御（フォーカスが外れた時に全角数字を半角に変換し、不要な文字を削除）
       const sanitizeTel = (str: string) =>
         str
           .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
@@ -224,18 +224,14 @@ const PREFECTURES = [
 
       const telInputs = document.querySelectorAll<HTMLInputElement>('input[type="tel"]');
       telInputs.forEach(input => {
-        input.addEventListener('input', (e) => {
+        // input ではなく blur（フォーカスが外れた時）に実行する
+        input.addEventListener('blur', (e) => {
           const target = e.target as HTMLInputElement;
-          const oldStart = target.selectionStart ?? 0;
-          const oldEnd = target.selectionEnd ?? 0;
           const oldVal = target.value;
           const val = sanitizeTel(oldVal);
 
           if (oldVal !== val) {
             target.value = val;
-            const newStart = Math.min(sanitizeTel(oldVal.substring(0, oldStart)).length, val.length);
-            const newEnd = Math.min(sanitizeTel(oldVal.substring(0, oldEnd)).length, val.length);
-            target.setSelectionRange(newStart, newEnd);
           }
         });
       });
