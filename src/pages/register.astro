@@ -66,11 +66,11 @@ const PREFECTURES = [
           </div>
           <div class="space-y-2">
             <label class="text-sm font-medium">携帯電話番号</label>
-            <input type="tel" name="mobile_phone" placeholder="09012345678" required pattern="^0\d{1,4}-?\d{1,4}-?\d{4}$" title="正しい電話番号を半角数字で入力してください（例：090-1234-5678 または 09012345678）" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+            <input type="tel" name="mobile_phone" placeholder="09012345678" required pattern="0[0-9]{1,4}-?[0-9]{1,4}-?[0-9]{4}" title="正しい電話番号を半角数字で入力してください（例：090-1234-5678 または 09012345678）" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
           </div>
           <div class="space-y-2">
             <label class="text-sm font-medium">自宅電話番号 (任意)</label>
-            <input type="tel" name="phone_number" placeholder="0312345678" pattern="^0\d{1,4}-?\d{1,4}-?\d{4}$" title="正しい電話番号を半角数字で入力してください" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+            <input type="tel" name="phone_number" placeholder="0312345678" pattern="0[0-9]{1,4}-?[0-9]{1,4}-?[0-9]{4}" title="正しい電話番号を半角数字で入力してください" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
           </div>
           <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
@@ -216,18 +216,27 @@ const PREFECTURES = [
       }
 
       // 電話番号の入力制御（全角数字を半角に変換し、数字とハイフン以外を削除）
+      const sanitizeTel = (str: string) =>
+        str
+          .replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+          .replace(/[ー−‐－—–ｰ]/g, '-')
+          .replace(/[^0-9-]/g, '');
+
       const telInputs = document.querySelectorAll<HTMLInputElement>('input[type="tel"]');
       telInputs.forEach(input => {
         input.addEventListener('input', (e) => {
           const target = e.target as HTMLInputElement;
-          // 1. 全角数字を半角数字に変換
-          let val = target.value.replace(/[０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-          // 2. あらゆるハイフンや長音符を半角ハイフンに変換
-          val = val.replace(/[ー−‐－—–ｰ]/g, '-');
-          // 3. 数字と半角ハイフン以外の文字を削除
-          val = val.replace(/[^0-9-]/g, '');
-          // 値を更新
-          target.value = val;
+          const oldStart = target.selectionStart ?? 0;
+          const oldEnd = target.selectionEnd ?? 0;
+          const oldVal = target.value;
+          const val = sanitizeTel(oldVal);
+
+          if (oldVal !== val) {
+            target.value = val;
+            const newStart = Math.min(sanitizeTel(oldVal.substring(0, oldStart)).length, val.length);
+            const newEnd = Math.min(sanitizeTel(oldVal.substring(0, oldEnd)).length, val.length);
+            target.setSelectionRange(newStart, newEnd);
+          }
         });
       });
 
