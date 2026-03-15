@@ -447,10 +447,12 @@ const PREFECTURES = [
           const newMemberDocRef = doc(db, 'members', uid);
           await setDoc(newMemberDocRef, {
             ...cleanLaravelData,
+            id: uid, // LaravelのID(48等)を上書きしてFirebaseのUIDにする
             payment_method: paymentMethod,
             pet_ride: petRide,
             user_id: uid,
             userRef: userDocRef,
+            memberRef: newMemberDocRef, // 自身のReferenceを追加
             created_at: new Date(),
           });
 
@@ -459,6 +461,7 @@ const PREFECTURES = [
           await setDoc(newLicenseDocRef, {
             user_id: uid,
             userRef: userDocRef,
+            licenseRef: newLicenseDocRef, // 自身のReferenceを追加
             license_front_image: frontUrl,
             license_back_image: backUrl,
             address_verification_image: addressUrl,
@@ -468,6 +471,7 @@ const PREFECTURES = [
           });
 
           await setDoc(userDocRef, {
+            uid: uid, // uidフィールドにDocumentID文字列を追加
             email: email,
             display_name: displayName,
             role: 'member',
