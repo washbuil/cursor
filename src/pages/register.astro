@@ -125,15 +125,27 @@ const PREFECTURES = [
             <div class="space-y-2">
               <label class="text-sm font-medium">免許証（表面）<span class="text-red-500 ml-1">*</span></label>
               <input type="file" name="license_front" accept="image/*" required class="w-full text-sm" />
+              <div id="preview_front" class="mt-2 hidden rounded border border-border p-2 bg-muted/30">
+                <img src="" class="h-32 w-auto object-contain rounded" />
+                <p class="text-xs text-muted-foreground mt-1 truncate file-name"></p>
+              </div>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-medium">免許証（裏面）<span class="text-red-500 ml-1">*</span></label>
               <input type="file" name="license_back" accept="image/*" required class="w-full text-sm" />
+              <div id="preview_back" class="mt-2 hidden rounded border border-border p-2 bg-muted/30">
+                <img src="" class="h-32 w-auto object-contain rounded" />
+                <p class="text-xs text-muted-foreground mt-1 truncate file-name"></p>
+              </div>
             </div>
             <div class="space-y-2 md:col-span-2">
               <label class="text-sm font-medium">住所確認書類</label>
               <p class="text-xs text-muted-foreground mb-1">※現住所と免許証の住所が異なる場合のみアップロードしてください。</p>
               <input type="file" name="address_doc" accept="image/*" class="w-full text-sm" />
+              <div id="preview_address" class="mt-2 hidden rounded border border-border p-2 bg-muted/30 w-1/2">
+                <img src="" class="h-32 w-auto object-contain rounded" />
+                <p class="text-xs text-muted-foreground mt-1 truncate file-name"></p>
+              </div>
             </div>
           </div>
         </section>
@@ -237,6 +249,38 @@ const PREFECTURES = [
           }
         });
       });
+
+      // 画像プレビュー（ファイル選択時にサムネイル表示）
+      const initImagePreview = (inputName: string, previewId: string) => {
+        const input = form?.querySelector<HTMLInputElement>(`input[name="${inputName}"]`);
+        const previewEl = document.getElementById(previewId);
+        if (!input || !previewEl) return;
+
+        const img = previewEl.querySelector('img');
+        const fileNameEl = previewEl.querySelector('.file-name');
+        let lastUrl = '';
+
+        input.addEventListener('change', () => {
+          if (lastUrl) URL.revokeObjectURL(lastUrl);
+          lastUrl = '';
+
+          const file = input.files?.[0];
+          if (file && file.type.startsWith('image/')) {
+            lastUrl = URL.createObjectURL(file);
+            if (img) img.src = lastUrl;
+            if (fileNameEl) fileNameEl.textContent = file.name;
+            previewEl.classList.remove('hidden');
+          } else {
+            if (img) img.src = '';
+            if (fileNameEl) fileNameEl.textContent = '';
+            previewEl.classList.add('hidden');
+          }
+        });
+      };
+
+      initImagePreview('license_front', 'preview_front');
+      initImagePreview('license_back', 'preview_back');
+      initImagePreview('address_doc', 'preview_address');
 
       // メールアドレス重複チェック (デバウンス処理)
       const emailInput = form?.querySelector('input[name="email"]') as HTMLInputElement | null;
@@ -560,15 +604,7 @@ const PREFECTURES = [
           }
 
           // 完了通知とリダイレクト
-          alert(
-            '会員登録のお申し込みが完了しました。\n\n' +
-            'ご入力いただいたメールアドレスに確認メールを送信しましたので、メール内のリンクをクリックして認証を完了させてください。\n\n' +
-            '【重要】\n' +
-            '現在、ご登録内容の確認とシステムへの反映を行っております。\n' +
-            '設定が完了次第、予約システムへのログインが可能になりますので、今しばらくお待ちください。\n\n' +
-            'OKを押すと公式サイトへ移動します。'
-          );
-          window.location.href = 'https://roadcruise.jp/';
+          window.location.href = 'https://roadcruise.jp/member-registration-thanks';
 
         } catch (err: unknown) {
           console.error(err);
