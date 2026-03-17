@@ -221,9 +221,6 @@ const PREFECTURES = [
             const paymentMethod = (fd.get('payment_method') ?? '').toString();
             const petRide = (fd.get('pet_ride') ?? '').toString();
             const originalMemo = (fd.get('memo') ?? '').toString().trim();
-            const combinedMemo = originalMemo
-              ? `${originalMemo}\n\n【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim()
-              : `【選択項目】\n支払方法: ${paymentMethod}\nペット: ${petRide}`.trim();
 
             const laravelPayload = {
               flutter_user_id: user.uid,
@@ -237,7 +234,7 @@ const PREFECTURES = [
               prf: fd.get('prf'),
               address: fd.get('address'),
               room_number: fd.get('room_number') ?? '',
-              memo: combinedMemo,
+              memo: originalMemo,
               payment_method: paymentMethod,
               pet_ride: petRide,
             };
