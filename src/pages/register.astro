@@ -103,11 +103,11 @@ const PREFECTURES = [
           <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
               <label class="text-sm font-medium">郵便番号</label>
-              <input type="text" name="postal_code" placeholder="123-4567" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
+              <input type="text" name="post_code" placeholder="123-4567" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2" />
             </div>
             <div class="space-y-2">
               <label class="text-sm font-medium">都道府県</label>
-              <select name="prf" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
+              <select name="prefectures" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
                 <option value="">選択してください</option>
                 {PREFECTURES.map((pref) => <option value={pref}>{pref}</option>)}
               </select>
@@ -126,7 +126,7 @@ const PREFECTURES = [
               <label class="text-sm font-medium">お支払い方法</label>
               <select name="payment_method" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2">
                 <option value="" disabled selected>選択してください</option>
-                <option value="クレジットカード">クレジットカード</option>
+                <option value="クレジット払い">クレジット払い</option>
                 <option value="銀行振込">銀行振込</option>
               </select>
             </div>
@@ -216,8 +216,8 @@ const PREFECTURES = [
 
       const form = document.getElementById('register-form') as HTMLFormElement;
       const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-      const postalCodeInput = document.querySelector<HTMLInputElement>('input[name="postal_code"]');
-      const prfSelect = document.querySelector<HTMLSelectElement>('select[name="prf"]');
+      const postalCodeInput = document.querySelector<HTMLInputElement>('input[name="post_code"]');
+      const prfSelect = document.querySelector<HTMLSelectElement>('select[name="prefectures"]');
       const addressInput = document.querySelector<HTMLInputElement>('input[name="address"]');
 
       // 郵便番号からの住所自動入力
@@ -476,8 +476,8 @@ const PREFECTURES = [
             first_name_kana: fd.get('first_name_kana'),
             mobile_phone: fd.get('mobile_phone'),
             phone_number: fd.get('phone_number') ?? '',
-            postal_code: fd.get('postal_code'),
-            prf: fd.get('prf'),
+            post_code: fd.get('post_code'),
+            prefectures: fd.get('prefectures'),
             address: fd.get('address'),
             room_number: fd.get('room_number') ?? '',
             memo: originalMemo,
@@ -517,6 +517,7 @@ const PREFECTURES = [
           await setDoc(newMemberDocRef, {
             ...cleanLaravelData,
             id: uid, // LaravelのID(48等)を上書きしてFirebaseのUIDにする
+            member_code: String(laravelData.member_code ?? ''), // 文字列に強制変換
             payment_method: paymentMethod,
             pet_ride: petRide,
             user_id: uid,
@@ -571,8 +572,8 @@ const PREFECTURES = [
                   mobile_email: email,
                   mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
                   home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
-                  prefectures: fd.get('prf'),
-                  post_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                  prefectures: fd.get('prefectures'),
+                  post_code: (fd.get('post_code') ?? '').toString().replace(/-/g, ''),
                   address: fd.get('address'),
                   room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
                   payment_method: paymentMethod,
