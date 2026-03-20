@@ -509,13 +509,20 @@ const PREFECTURES = [
           // laravelDataの中の null をすべて空文字列("")に変換する
           const cleanLaravelData = Object.fromEntries(
             Object.entries(laravelData).map(([key, value]) => [key, value === null ? '' : value])
-          );
+          ) as Record<string, unknown>;
+
+          // Laravel由来の postal_code / prf を展開から除外し、Firestore では post_code / prefectures に統一
+          const { postal_code: laravelPostalCode, prf: laravelPrf, ...filteredMemberData } = cleanLaravelData;
 
           // 4. Firestore 保存 (Members & Licenses & Users)
           // uid をドキュメントIDとして指定
           const newMemberDocRef = doc(db, 'members', uid);
           await setDoc(newMemberDocRef, {
-            ...cleanLaravelData,
+            ...filteredMemberData,
+            post_code: String(
+              laravelPostalCode ?? cleanLaravelData.post_code ?? fd.get('post_code') ?? ''
+            ),
+            prefectures: String(laravelPrf ?? cleanLaravelData.prefectures ?? fd.get('prefectures') ?? ''),
             id: uid, // LaravelのID(48等)を上書きしてFirebaseのUIDにする
             member_code: String(laravelData.member_code ?? ''), // 文字列に強制変換
             payment_method: paymentMethod,

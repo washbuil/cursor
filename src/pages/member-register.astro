@@ -258,6 +258,11 @@ const PREFECTURES = [
             const laravelData = await laravelRes.json().catch(() => ({}));
             console.log('Laravel Response:', laravelData);
 
+            const cleanLaravelData = Object.fromEntries(
+              Object.entries(laravelData).map(([key, value]) => [key, value === null ? '' : value])
+            ) as Record<string, unknown>;
+            const { postal_code: laravelPostalCode, prf: laravelPrf, ...filteredMemberData } = cleanLaravelData;
+
             // --- Step 2: Firestore Save ---
             const db = getDb();
             if (db) {
@@ -266,7 +271,11 @@ const PREFECTURES = [
               const userDocRef = doc(db, 'users', user.uid);
 
               await setDoc(newMemberDocRef, {
-                ...laravelData,
+                ...filteredMemberData,
+                post_code: String(
+                  laravelPostalCode ?? cleanLaravelData.post_code ?? fd.get('postal_code') ?? ''
+                ),
+                prefectures: String(laravelPrf ?? cleanLaravelData.prefectures ?? fd.get('prf') ?? ''),
                 payment_method: paymentMethod,
                 pet_ride: petRide,
                 user_id: user.uid,
