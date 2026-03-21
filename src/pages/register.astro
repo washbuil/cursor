@@ -476,8 +476,8 @@ const PREFECTURES = [
             first_name_kana: fd.get('first_name_kana'),
             mobile_phone: fd.get('mobile_phone'),
             phone_number: fd.get('phone_number') ?? '',
-            post_code: fd.get('post_code'),
-            prefectures: fd.get('prefectures'),
+            postal_code: fd.get('post_code'),
+            prf: fd.get('prefectures'),
             address: fd.get('address'),
             room_number: fd.get('room_number') ?? '',
             memo: originalMemo,
@@ -519,9 +519,7 @@ const PREFECTURES = [
           const newMemberDocRef = doc(db, 'members', uid);
           await setDoc(newMemberDocRef, {
             ...filteredMemberData,
-            post_code: String(
-              laravelPostalCode ?? cleanLaravelData.post_code ?? fd.get('post_code') ?? ''
-            ),
+            post_code: String(laravelPostalCode ?? cleanLaravelData.post_code ?? fd.get('post_code') ?? ''),
             prefectures: String(laravelPrf ?? cleanLaravelData.prefectures ?? fd.get('prefectures') ?? ''),
             id: uid, // LaravelのID(48等)を上書きしてFirebaseのUIDにする
             member_code: String(laravelData.member_code ?? ''), // 文字列に強制変換
