@@ -47,7 +47,7 @@ if (db) {
     <title>検索結果 | キャンピングカーレンタル</title>
   </head>
   <body class="min-h-screen flex flex-col bg-background text-foreground">
-    <div id="server-data" data-car-map={JSON.stringify(carMap)} data-api-token={import.meta.env.PUBLIC_API_TOKEN ?? ''} class="hidden" aria-hidden="true"></div>
+    <div id="server-data" data-car-map={JSON.stringify(carMap)} class="hidden" aria-hidden="true"></div>
     <Header />
 
     <main class="flex-1 pt-8 pb-16">
@@ -85,7 +85,6 @@ if (db) {
     </footer>
 
     <script>
-      const API_EMPTY_SEARCH_URL = 'https://roadcruise-share.com/api/lending/empty_search';
       const LARAVEL_URL = 'https://roadcruise-share.com';
 
       const serverDataEl = document.getElementById('server-data');
@@ -97,8 +96,6 @@ if (db) {
           return {};
         }
       })();
-      const apiToken = serverDataEl?.dataset?.apiToken ?? '';
-
       function getParams() {
         const params = new URLSearchParams(window.location.search);
         const start_day = params.get('start_day') ?? '';
@@ -154,10 +151,6 @@ if (db) {
       const params = getParams();
       const prf = params.prefecture.trim() !== '' ? params.prefecture.trim() : '東京都';
 
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-      };
       const payload = {
         laravelURL: LARAVEL_URL,
         prf,
@@ -168,10 +161,13 @@ if (db) {
       };
 
       console.log('Sending Payload:', payload);
-      fetch(API_EMPTY_SEARCH_URL, {
+      fetch('/api/proxy', {
         method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: 'api/lending/empty_search',
+          payload,
+        }),
       })
         .then((res) => {
           if (!res.ok) throw new Error('空車検索に失敗しました');

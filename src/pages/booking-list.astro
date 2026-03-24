@@ -31,10 +31,6 @@ import Header from '../components/Header.astro';
       </div>
     </main>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { initAuth } from '../lib/auth';
       import { getDb } from '../lib/firebase';
@@ -44,9 +40,6 @@ import Header from '../components/Header.astro';
       const contentEl = document.getElementById('content');
       const listEl = document.getElementById('booking-list');
       const noDataEl = document.getElementById('no-data');
-
-      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
-      const apiToken = pageData?.apiToken ?? '';
 
       function formatDate(ts: unknown): string {
         if (ts == null || ts === '') return '';
@@ -84,19 +77,19 @@ import Header from '../components/Header.astro';
         const db = getDb();
 
         try {
-          const res = await fetch('https://roadcruise-share.com/api/lending/get_reservation_by_id', {
+          const res = await fetch('/api/proxy', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              flutter_user_id: user.uid,
-              role: 'member',
-              start_day: '2020-01-01',
-              end_day: '2030-12-31',
-              owner_code: '0',
-              car_ids: '',
+              endpoint: 'api/lending/get_reservation_by_id',
+              payload: {
+                flutter_user_id: user.uid,
+                role: 'member',
+                start_day: '2020-01-01',
+                end_day: '2030-12-31',
+                owner_code: '0',
+                car_ids: '',
+              },
             }),
           });
 

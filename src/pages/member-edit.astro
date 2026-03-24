@@ -118,10 +118,6 @@ const PREFECTURES = [
       </div>
     </main>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { initAuth, getCurrentUser } from '../lib/auth';
       import { getDb } from '../lib/firebase';
@@ -132,8 +128,6 @@ const PREFECTURES = [
       const form = document.getElementById('edit-form') as HTMLFormElement | null;
       const submitBtn = document.getElementById('submit-btn');
 
-      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
-      const apiToken = pageData?.apiToken ?? '';
       let memberDocId = '';
       let currentMemberCode = '';
 
@@ -275,31 +269,31 @@ const PREFECTURES = [
 
           if (currentMemberCode) {
             try {
-              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/update', {
+              const fmRes = await fetch('/api/proxy', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  database: 'webapp',
-                  layout_name: 'members',
-                  query_key: 'member_code',
-                  query_value: currentMemberCode,
-                  data: {
-                    last_name: fd.get('last_name'),
-                    first_name: fd.get('first_name'),
-                    last_name_kana: fd.get('last_name_kana'),
-                    first_name_kana: fd.get('first_name_kana'),
-                    mobile_phone: fd.get('mobile_phone'),
-                    home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
-                    post_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
-                    prefectures: fd.get('prf'),
-                    address: fd.get('address'),
-                    room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
-                    payment_method: fd.get('payment_method'),
-                    pet: fd.get('pet_ride'),
-                    memo: (fd.get('memo') ?? '').toString().trim() || '-',
+                  endpoint: 'api/filemaker/update',
+                  payload: {
+                    database: 'webapp',
+                    layout_name: 'members',
+                    query_key: 'member_code',
+                    query_value: currentMemberCode,
+                    data: {
+                      last_name: fd.get('last_name'),
+                      first_name: fd.get('first_name'),
+                      last_name_kana: fd.get('last_name_kana'),
+                      first_name_kana: fd.get('first_name_kana'),
+                      mobile_phone: fd.get('mobile_phone'),
+                      home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
+                      post_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                      prefectures: fd.get('prf'),
+                      address: fd.get('address'),
+                      room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
+                      payment_method: fd.get('payment_method'),
+                      pet: fd.get('pet_ride'),
+                      memo: (fd.get('memo') ?? '').toString().trim() || '-',
+                    },
                   },
                 }),
               });
@@ -313,27 +307,26 @@ const PREFECTURES = [
 
           if (currentMemberCode) {
             try {
-              const laravelRes = await fetch('https://roadcruise-share.com/api/members/update-by-code', {
+              const laravelRes = await fetch('/api/proxy', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  member_code: currentMemberCode,
-                  last_name: fd.get('last_name'),
-                  first_name: fd.get('first_name'),
-                  last_name_kana: fd.get('last_name_kana'),
-                  first_name_kana: fd.get('first_name_kana'),
-                  mobile_phone: fd.get('mobile_phone'),
-                  phone_number: fd.get('phone_number'),
-                  postal_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
-                  prf: fd.get('prf'),
-                  address: fd.get('address'),
-                  room_number: fd.get('room_number'),
-                  memo: fd.get('memo'),
-                  ...(user?.email ? { email: user.email } : {}),
+                  endpoint: 'api/members/update-by-code',
+                  payload: {
+                    member_code: currentMemberCode,
+                    last_name: fd.get('last_name'),
+                    first_name: fd.get('first_name'),
+                    last_name_kana: fd.get('last_name_kana'),
+                    first_name_kana: fd.get('first_name_kana'),
+                    mobile_phone: fd.get('mobile_phone'),
+                    phone_number: fd.get('phone_number'),
+                    postal_code: (fd.get('postal_code') ?? '').toString().replace(/-/g, ''),
+                    prf: fd.get('prf'),
+                    address: fd.get('address'),
+                    room_number: fd.get('room_number'),
+                    memo: fd.get('memo'),
+                    ...(user?.email ? { email: user.email } : {}),
+                  },
                 }),
               });
               if (!laravelRes.ok) {

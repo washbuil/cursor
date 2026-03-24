@@ -201,18 +201,11 @@ const PREFECTURES = [
       </div>
     </footer>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { getAuth, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, fetchSignInMethodsForEmail } from 'firebase/auth';
       import { getFirebaseApp, getDb, getFirebaseStorage } from '../lib/firebase';
       import { doc, setDoc } from 'firebase/firestore';
       import { ref, uploadBytes, getDownloadURL, type FirebaseStorage } from 'firebase/storage';
-
-      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
-      const apiToken = pageData?.apiToken ?? '';
 
       const form = document.getElementById('register-form') as HTMLFormElement;
       const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
@@ -391,20 +384,19 @@ const PREFECTURES = [
           await updateProfile(user, { displayName: displayName });
           await sendEmailVerification(user); // メール認証を送信
 
-          // 1.5 Laravel API へユーザー追加 (add_user) を行う
+          // 1.5 Laravel API へユーザー追加 (add_user) を行う（/api/proxy 経由）
           try {
-            const addUserRes = await fetch('https://roadcruise-share.com/api/user/add_user', {
+            const addUserRes = await fetch('/api/proxy', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                flutter_user_id: uid,
-                name: displayName || ((fd.get('last_name') ?? '') + ' ' + (fd.get('first_name') ?? '')).trim(),
-                email,
-                password,
+                endpoint: 'api/user/add_user',
+                payload: {
+                  flutter_user_id: uid,
+                  name: displayName || ((fd.get('last_name') ?? '') + ' ' + (fd.get('first_name') ?? '')).trim(),
+                  email,
+                  password,
+                },
               }),
             });
 
@@ -418,24 +410,23 @@ const PREFECTURES = [
             throw new Error('ユーザー初期登録の通信に失敗しました。');
           }
 
-          // 1.6 FileMaker API へユーザー追加 (usersレイアウト) を行う
+          // 1.6 FileMaker API へユーザー追加 (usersレイアウト) を行う（/api/proxy 経由）
           try {
-            const fmUserRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+            const fmUserRes = await fetch('/api/proxy', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                database: 'webapp',
-                layout_name: 'users',
-                data: {
-                  role: 'member',
-                  email,
-                  display_name: displayName,
-                  userRef: uid,
-                  plan: '通常',
+                endpoint: 'api/filemaker/create',
+                payload: {
+                  database: 'webapp',
+                  layout_name: 'users',
+                  data: {
+                    role: 'member',
+                    email,
+                    display_name: displayName,
+                    userRef: uid,
+                    plan: '通常',
+                  },
                 },
               }),
             });
@@ -489,14 +480,13 @@ const PREFECTURES = [
             address_doc_url: addressUrl,
           };
 
-          const laravelRes = await fetch('https://roadcruise-share.com/api/member/add', {
+          const laravelRes = await fetch('/api/proxy', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-            },
-            body: JSON.stringify(laravelPayload),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              endpoint: 'api/member/add',
+              payload: laravelPayload,
+            }),
           });
 
           if (!laravelRes.ok) {
@@ -558,35 +548,35 @@ const PREFECTURES = [
             created_at: new Date(),
           });
 
-          // 5. FileMaker API (membersレイアウト)
+          // 5. FileMaker API (membersレイアウト)（/api/proxy 経由）
           try {
-            const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+            const fmRes = await fetch('/api/proxy', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                database: 'webapp',
-                layout_name: 'members',
-                data: {
-                  last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
-                  first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
-                  last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
-                  first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
-                  mobile_email: email,
-                  mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
-                  home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
-                  prefectures: fd.get('prefectures'),
-                  post_code: (fd.get('post_code') ?? '').toString().replace(/-/g, ''),
-                  address: fd.get('address'),
-                  room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
-                  payment_method: paymentMethod,
-                  userRef: uid,
-                  pet: petRide,
-                  memo: originalMemo,
-                  member_code: laravelData.member_code ?? '',
-                  DocumentID: uid,
+                endpoint: 'api/filemaker/create',
+                payload: {
+                  database: 'webapp',
+                  layout_name: 'members',
+                  data: {
+                    last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
+                    first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
+                    last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
+                    first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
+                    mobile_email: email,
+                    mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
+                    home_phone: (fd.get('phone_number') ?? '').toString().trim() || '-',
+                    prefectures: fd.get('prefectures'),
+                    post_code: (fd.get('post_code') ?? '').toString().replace(/-/g, ''),
+                    address: fd.get('address'),
+                    room_number: (fd.get('room_number') ?? '').toString().trim() || '-',
+                    payment_method: paymentMethod,
+                    userRef: uid,
+                    pet: petRide,
+                    memo: originalMemo,
+                    member_code: laravelData.member_code ?? '',
+                    DocumentID: uid,
+                  },
                 },
               }),
             });
@@ -604,24 +594,24 @@ const PREFECTURES = [
             const now = new Date();
             const createdAtStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()} 00:00:00`;
 
-            const fmLicenseRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+            const fmLicenseRes = await fetch('/api/proxy', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                database: 'webapp',
-                layout_name: 'licenses',
-                data: {
-                  licenseRef: newLicenseDocRef.id,
-                  userRef: uid,
-                  // フォームに存在しないテキスト項目は空文字エラーを防ぐため '-' を設定
-                  license_number: '-',
-                  license_color: '-',
-                  license_type: '-',
-                  created_at: createdAtStr
-                  // birthday, license_expiration_date は未入力による日付型エラーを防ぐためキーごと除外しています
+                endpoint: 'api/filemaker/create',
+                payload: {
+                  database: 'webapp',
+                  layout_name: 'licenses',
+                  data: {
+                    licenseRef: newLicenseDocRef.id,
+                    userRef: uid,
+                    // フォームに存在しないテキスト項目は空文字エラーを防ぐため '-' を設定
+                    license_number: '-',
+                    license_color: '-',
+                    license_type: '-',
+                    created_at: createdAtStr
+                    // birthday, license_expiration_date は未入力による日付型エラーを防ぐためキーごと除外しています
+                  },
                 },
               }),
             });

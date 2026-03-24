@@ -323,7 +323,6 @@ function formatPrice(value: number): string {
 
  <script define:vars={{ 
       carId: car?.carId ?? null, 
-      apiToken: import.meta.env.PUBLIC_API_TOKEN, 
       stationCode: car?.stationCode ?? '2', 
       ownerCode: car?.ownerCode ?? '1', 
       calendarId: car?.calendarId ?? '1', 
@@ -335,7 +334,6 @@ function formatPrice(value: number): string {
       // サーバーからの変数を window オブジェクト（グローバル変数）に保存します
       window.bookingData = {
         carId,
-        apiToken,
         stationCode,
         ownerCode,
         calendarId,
@@ -353,14 +351,10 @@ function formatPrice(value: number): string {
 
       document.addEventListener('DOMContentLoaded', () => {
         // 保存したデータを取得
-        const { carId, apiToken, stationCode, ownerCode, calendarId, emails, ownerMails, stationName, carName } = window.bookingData;
-
-        const API_PRICE_URL = 'https://roadcruise-share.com/api/lending/price_calculate';
+        const { carId, stationCode, ownerCode, calendarId, emails, ownerMails, stationName, carName } = window.bookingData;
 
         const card = document.getElementById('booking-card');
         if (!card) return;
-
-        const authHeader = apiToken != null && apiToken !== '' ? { 'Authorization': 'Bearer ' + apiToken } : {};
         const startDayInput = document.getElementById('booking-start-day');
         const endDayInput = document.getElementById('booking-end-day');
         const startTimeSelect = document.getElementById('booking-start-time');
@@ -416,18 +410,21 @@ function formatPrice(value: number): string {
           setFinalPriceDisplay('計算中...');
           setMessage('計算中...');
 
-          fetch(API_PRICE_URL, {
+          fetch('/api/proxy', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeader },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              car_id: carId,
-              start_day: startDay,
-              start_time: startTime,
-              end_day: endDay,
-              end_time: endTime,
-              pet: getPetValue() || 'なし',
-              plan: '通常'
-            })
+              endpoint: 'api/lending/price_calculate',
+              payload: {
+                car_id: carId,
+                start_day: startDay,
+                start_time: startTime,
+                end_day: endDay,
+                end_time: endTime,
+                pet: getPetValue() || 'なし',
+                plan: '通常',
+              },
+            }),
           })
             .then(function (res) {
               if (!res.ok) throw new Error('料金の取得に失敗しました');
@@ -580,10 +577,13 @@ function formatPrice(value: number): string {
             role: 'admin'
           };
 
-          fetch('https://roadcruise-share.com/api/lending/add_form', {
+          fetch('/api/proxy', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeader },
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              endpoint: 'api/lending/add_form',
+              payload,
+            }),
           })
             .then(function (res) {
               if (!res.ok) throw new Error('予約の送信に失敗しました');

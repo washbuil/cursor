@@ -77,10 +77,6 @@ import Header from '../components/Header.astro';
       </div>
     </main>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { initAuth } from '../lib/auth';
       import { getDb } from '../lib/firebase';
@@ -99,9 +95,6 @@ import Header from '../components/Header.astro';
       const bookingIdEl = document.getElementById('booking-id');
       const createdEl = document.getElementById('created-at');
       const optionsEl = document.getElementById('options-list');
-
-      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
-      const apiToken = pageData?.apiToken ?? '';
 
       function formatDate(ts: unknown): string {
         if (!ts) return '—';
@@ -140,17 +133,17 @@ import Header from '../components/Header.astro';
         }
 
         try {
-          const res = await fetch('https://roadcruise-share.com/api/info_lending/lendingData', {
+          const res = await fetch('/api/proxy', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              lending_id: bookingId,
-              user_id: user.uid,
-              role: 'member',
-              laravelURL: 'https://roadcruise-share.com',
+              endpoint: 'api/info_lending/lendingData',
+              payload: {
+                lending_id: bookingId,
+                user_id: user.uid,
+                role: 'member',
+                laravelURL: 'https://roadcruise-share.com',
+              },
             }),
           });
 

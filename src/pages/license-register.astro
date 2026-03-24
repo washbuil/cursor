@@ -143,10 +143,6 @@ const LICENSE_TYPES = ['普通', '普通AT限定', '準中型', '準中型AT限�
       </div>
     </main>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { initAuth, getCurrentUser } from '../lib/auth';
       import { getDb, getFirebaseStorage } from '../lib/firebase';
@@ -157,9 +153,6 @@ const LICENSE_TYPES = ['普通', '普通AT限定', '準中型', '準中型AT限�
       const contentEl = document.getElementById('content');
       const form = document.getElementById('license-form') as HTMLFormElement | null;
       const submitBtn = document.getElementById('submit-btn');
-
-      const pageData = (window as { pageData?: { apiToken?: string } }).pageData;
-      const apiToken = pageData?.apiToken ?? '';
 
       /** FileMaker用日付形式 M/D/YYYY 00:00:00 */
       function formatDateForFM(year: number, month: number, day: number): string {
@@ -258,28 +251,28 @@ const LICENSE_TYPES = ['普通', '普通AT限定', '準中型', '準中型AT限�
             });
 
             try {
-              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              const fmRes = await fetch('/api/proxy', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  database: 'webapp',
-                  layout_name: 'licenses',
-                  data: {
-                    license_number: fd.get('license_number'),
-                    birthday: birthdayStr,
-                    created_at: createdAtStr,
-                    licenseRef: newLicenseDocRef.id,
-                    license_color: fd.get('license_color'),
-                    license_expiration_date: expireStr,
-                    license_type: fd.get('license_type'),
-                    userRef: user.uid,
-                    license_front_image: frontUrl,
-                    license_back_image: backUrl,
-                    address_verification_image: addressUrl,
-                    identification_image: idUrl,
+                  endpoint: 'api/filemaker/create',
+                  payload: {
+                    database: 'webapp',
+                    layout_name: 'licenses',
+                    data: {
+                      license_number: fd.get('license_number'),
+                      birthday: birthdayStr,
+                      created_at: createdAtStr,
+                      licenseRef: newLicenseDocRef.id,
+                      license_color: fd.get('license_color'),
+                      license_expiration_date: expireStr,
+                      license_type: fd.get('license_type'),
+                      userRef: user.uid,
+                      license_front_image: frontUrl,
+                      license_back_image: backUrl,
+                      address_verification_image: addressUrl,
+                      identification_image: idUrl,
+                    },
                   },
                 }),
               });

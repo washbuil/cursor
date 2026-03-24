@@ -133,17 +133,10 @@ const PREFECTURES = [
       </div>
     </footer>
 
-    <script define:vars={{ apiToken: import.meta.env.PUBLIC_API_TOKEN }}>
-      window.pageData = { apiToken };
-    </script>
-
     <script>
       import { initAuth, getCurrentUser } from '../lib/auth';
       import { getDb } from '../lib/firebase';
       import { collection, doc, setDoc, updateDoc } from 'firebase/firestore';
-
-      const { apiToken } = window.pageData as { apiToken: string };
-      const API_MEMBER_ADD = 'https://roadcruise-share.com/api/member/add';
 
       const loadingEl = document.getElementById('member-loading');
       const formWrapEl = document.getElementById('member-form-wrap');
@@ -239,15 +232,14 @@ const PREFECTURES = [
               pet_ride: petRide,
             };
 
-            // --- Step 1: Laravel API ---
-            const laravelRes = await fetch(API_MEMBER_ADD, {
+            // --- Step 1: Laravel API（/api/proxy 経由）---
+            const laravelRes = await fetch('/api/proxy', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-              },
-              body: JSON.stringify(laravelPayload),
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                endpoint: 'api/member/add',
+                payload: laravelPayload,
+              }),
             });
 
             if (!laravelRes.ok) {
@@ -292,32 +284,32 @@ const PREFECTURES = [
 
             // --- Step 3: FileMaker Sync ---
             try {
-              const fmRes = await fetch('https://roadcruise-share.com/api/filemaker/create', {
+              const fmRes = await fetch('/api/proxy', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(apiToken ? { 'Authorization': 'Bearer ' + apiToken } : {}),
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  database: 'webapp',
-                  layout_name: 'members',
-                  data: {
-                    userRef: user.uid,
-                    member_code: laravelData.member_code ?? '',
-                    last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
-                    first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
-                    last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
-                    first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
-                    mobile_email: user.email ?? '',
-                    mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
-                    home_phone: (laravelData.phone_number ?? fd.get('phone_number') ?? '').toString() || '-',
-                    post_code: laravelData.postal_code ?? fd.get('postal_code') ?? '',
-                    prefectures: laravelData.prf ?? fd.get('prf') ?? '',
-                    address: laravelData.address ?? fd.get('address') ?? '',
-                    room_number: (laravelData.room_number ?? fd.get('room_number') ?? '').toString() || '-',
-                    payment_method: paymentMethod,
-                    pet: petRide,
-                    memo: (fd.get('memo') ?? '').toString() || '',
+                  endpoint: 'api/filemaker/create',
+                  payload: {
+                    database: 'webapp',
+                    layout_name: 'members',
+                    data: {
+                      userRef: user.uid,
+                      member_code: laravelData.member_code ?? '',
+                      last_name: laravelData.last_name ?? fd.get('last_name') ?? '',
+                      first_name: laravelData.first_name ?? fd.get('first_name') ?? '',
+                      last_name_kana: laravelData.last_name_kana ?? fd.get('last_name_kana') ?? '',
+                      first_name_kana: laravelData.first_name_kana ?? fd.get('first_name_kana') ?? '',
+                      mobile_email: user.email ?? '',
+                      mobile_phone: laravelData.mobile_phone ?? fd.get('mobile_phone') ?? '',
+                      home_phone: (laravelData.phone_number ?? fd.get('phone_number') ?? '').toString() || '-',
+                      post_code: laravelData.postal_code ?? fd.get('postal_code') ?? '',
+                      prefectures: laravelData.prf ?? fd.get('prf') ?? '',
+                      address: laravelData.address ?? fd.get('address') ?? '',
+                      room_number: (laravelData.room_number ?? fd.get('room_number') ?? '').toString() || '-',
+                      payment_method: paymentMethod,
+                      pet: petRide,
+                      memo: (fd.get('memo') ?? '').toString() || '',
+                    },
                   },
                 }),
               });
